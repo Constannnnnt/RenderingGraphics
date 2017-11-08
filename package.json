@@ -1,0 +1,33 @@
+{
+  "name": "renderinggraphics",
+  "version": "1.0.0",
+  "description": "This repository contains rendering projects for COMP5411, Advanced Computer Graphics. In this project, we are going to implement the following features:",
+  "main": "server.js",
+  "dependencies": {
+    "axios": "^0.17.0",
+    "babel-core": "^6.26.0",
+    "babel-loader": "^7.1.2",
+    "babel-preset-es2015": "^6.24.1",
+    "body-parser": "^1.18.2",
+    "cors": "^2.8.4",
+    "express": "^4.16.2",
+    "gulp": "^3.9.1",
+    "three": "^0.88.0",
+    "webpack": "^3.8.1"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "webpack --watch"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Constannnnnt/RenderingGraphics.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Constannnnnt/RenderingGraphics/issues"
+  },
+  "homepage": "https://github.com/Constannnnnt/RenderingGraphics#readme"
+}

@@ -14,8 +14,13 @@ This repository contains rendering projects for COMP5411, Advanced Computer Grap
 
 ### Implementation
 - Using three.js to implement features.
-- Using python simple server to serve the shader files.
-- Nodejs
+- Nodejs server
+
+### Usage
+- `npm install`
+- use `gulp dev` to start development
+- open `localhost:5411/src/` in the browser
+* **Need to restart `gulp dev` if the `server.js` file is modified.** Find the server and webpack log in the root directory `*.log` files.
 
 ### References:
 - [three.js](https://threejs.org/)
