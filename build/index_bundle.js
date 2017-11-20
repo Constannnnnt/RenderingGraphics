@@ -110,6 +110,17 @@ function init() {
       scene.add(object);
     }, onProgress, onError);
   });
+
+  var objLoader = new THREE.OBJLoader();
+  objLoader.setPath('../models/stage/');
+  objLoader.load('stage.obj', function (object) {
+    object.position.y -= 123.8;
+    object.scale.x = 20;
+    object.scale.y = 20;
+    object.scale.z = 20;
+    scene.add(object);
+    console.log('stage loading');
+  }, onProgress, onError);
   //
   renderer = new THREE.WebGLRenderer();
   renderer.setPixelRatio(window.devicePixelRatio);
