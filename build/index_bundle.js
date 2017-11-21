@@ -68,13 +68,17 @@
 /***/ (function(module, exports) {
 
 /* global THREE */
-
 var container, stats;
 var camera, scene, renderer;
 var mouseX = 0,
     mouseY = 0;
 var windowHalfX = window.innerWidth / 2;
 var windowHalfY = window.innerHeight / 2;
+
+// var lightHelper
+// var directionalLighthelper
+
+
 init();
 animate();
 function init() {
@@ -82,13 +86,84 @@ function init() {
   document.body.appendChild(container);
   camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 2000);
   camera.position.z = 250;
+
+  renderer = new THREE.WebGLRenderer();
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  container.appendChild(renderer.domElement);
+
+  // control
+  var controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.addEventListener('change', render);
+  controls.minDistance = 10;
+  controls.maxDistance = 800;
+  controls.enablePan = true;
+
   // scene
   scene = new THREE.Scene();
   var ambientLight = new THREE.AmbientLight(0xcccccc, 0.4);
   scene.add(ambientLight);
-  var pointLight = new THREE.PointLight(0xffffff, 0.8);
-  camera.add(pointLight);
+
+  var directionalLight = new THREE.DirectionalLight(0xffffff, 0.4);
+  var target = new THREE.Object3D();
+  target.position.copy(new THREE.Vector3(0, 0, -5));
+
+  scene.add(directionalLight);
+  scene.add(target);
+  directionalLight.target = target;
+  // directionalLighthelper = new THREE.DirectionalLightHelper( directionalLight, 5 );
+
+  // scene.add( directionalLighthelper )
+
+  // spotlight
+  var spotLight = new THREE.SpotLight(0xffff00, 1);
+  spotLight.position.set(5, 95, 100);
+  spotLight.angle = Math.PI / 8;
+  spotLight.penumbra = 0.08;
+  spotLight.decay = 2;
+  spotLight.distance = 400;
+  spotLight.castShadow = true;
+  spotLight.shadow.mapSize.width = 1024;
+  spotLight.shadow.mapSize.height = 1024;
+  spotLight.shadow.camera.near = 10;
+  spotLight.shadow.camera.far = 200;
+  scene.add(spotLight);
+
+  // lightHelper = new THREE.SpotLightHelper( spotLight );
+  // scene.add( lightHelper );
+
   scene.add(camera);
+
+  var loader = new THREE.TextureLoader();
+
+  // load a resource
+  loader.load(
+  // resource URL
+  '../images/floor.jpg',
+  // Function when resource is loaded
+  function (texture) {
+    // in this example we create the material when the texture is loaded
+    var material = new THREE.MeshBasicMaterial({
+      map: texture,
+      blending: THREE.AdditiveBlending,
+      transparent: true,
+      opacity: 0.5
+    });
+    var geometry = new THREE.BoxGeometry(387, 0.001, 266);
+    //  var material = new THREE.MeshBasicMaterial( {color: 0x00ff00} );
+    window.cube = new THREE.Mesh(geometry, material);
+    cube.position.copy(new THREE.Vector3(-27, -94, 5));
+    scene.add(cube);
+  },
+  // Function called when download progresses
+  function (xhr) {
+    console.log(xhr.loaded / xhr.total * 100 + '% loaded');
+  },
+  // Function called when download errors
+  function (xhr) {
+    console.error('An error happened');
+  });
+
   // model
   var onProgress = function (xhr) {
     if (xhr.lengthComputable) {
@@ -107,7 +182,13 @@ function init() {
     objLoader.setPath('../models/Miku/');
     objLoader.load('Miku.obj', function (object) {
       object.position.y = -95;
+      object.position.x = -25;
       scene.add(object);
+
+      spotLight.target = object;
+
+      controls.target.copy(object.position);
+      controls.update();
     }, onProgress, onError);
   });
 
@@ -119,13 +200,9 @@ function init() {
     object.scale.y = 20;
     object.scale.z = 20;
     scene.add(object);
-    console.log('stage loading');
+    // console.log('stage loading')
   }, onProgress, onError);
-  //
-  renderer = new THREE.WebGLRenderer();
-  renderer.setPixelRatio(window.devicePixelRatio);
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  container.appendChild(renderer.domElement);
+
   document.addEventListener('mousemove', onDocumentMouseMove, false);
   //
   window.addEventListener('resize', onWindowResize, false);
@@ -147,9 +224,8 @@ function animate() {
   render();
 }
 function render() {
-  camera.position.x += (mouseX - camera.position.x) * .05;
-  camera.position.y += (-mouseY - camera.position.y) * .05;
-  camera.lookAt(scene.position);
+  // lightHelper.update();
+  // directionalLighthelper.update()
   renderer.render(scene, camera);
 }
 
