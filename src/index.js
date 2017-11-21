@@ -1,21 +1,20 @@
 /* global THREE */
 var container, stats
 var camera, scene, renderer
-var mouseX = 0, mouseY = 0
-var windowHalfX = window.innerWidth / 2
-var windowHalfY = window.innerHeight / 2
-
-// var lightHelper
-// var directionalLighthelper
-
 
 init()
 animate()
+
 function init() {
+  // scene
+  scene = new THREE.Scene()
+
+  // canvas
   container = document.createElement('div')
   document.body.appendChild(container)
   camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 2000)
   camera.position.z = 250
+  scene.add(camera)
 
   renderer = new THREE.WebGLRenderer()
   renderer.setPixelRatio(window.devicePixelRatio)
@@ -29,26 +28,22 @@ function init() {
   controls.maxDistance = 800
   controls.enablePan = true
 
-  // scene
-  scene = new THREE.Scene()
+  // lights
   var ambientLight = new THREE.AmbientLight(0xcccccc, 0.4)
   scene.add(ambientLight)
 
-  var directionalLight = new THREE.DirectionalLight( 0xffffff, 0.4 )
+  var directionalLight = new THREE.DirectionalLight(0xffffff, 0.4)
   var target = new THREE.Object3D()
   target.position.copy(new THREE.Vector3(0, 0, -5))
-  
-  scene.add( directionalLight )
-  scene.add( target )
+
+  scene.add(directionalLight)
+  scene.add(target)
   directionalLight.target = target
-  // directionalLighthelper = new THREE.DirectionalLightHelper( directionalLight, 5 );
-  
-  // scene.add( directionalLighthelper )
 
   // spotlight
   var spotLight = new THREE.SpotLight(0xffff00, 1)
   spotLight.position.set(5, 95, 100)
-  spotLight.angle = Math.PI / 8 
+  spotLight.angle = Math.PI / 8
   spotLight.penumbra = 0.08
   spotLight.decay = 2
   spotLight.distance = 400
@@ -59,50 +54,37 @@ function init() {
   spotLight.shadow.camera.far = 200
   scene.add(spotLight)
 
-  // lightHelper = new THREE.SpotLightHelper( spotLight );
-  // scene.add( lightHelper );
-
-  scene.add(camera)
-
-  var loader = new THREE.TextureLoader();
-  
-  // load a resource
+  // floor texture
+  var loader = new THREE.TextureLoader()
   loader.load(
     // resource URL
     '../images/floor.jpg',
     // Function when resource is loaded
-    function ( texture ) {
+    function (texture) {
       // in this example we create the material when the texture is loaded
-      var material = new THREE.MeshBasicMaterial( {
+      var material = new THREE.MeshBasicMaterial({
         map: texture,
         blending: THREE.AdditiveBlending,
         transparent: true,
         opacity: 0.5
-       } );
-       var geometry = new THREE.BoxGeometry( 387, 0.001, 266 );
-      //  var material = new THREE.MeshBasicMaterial( {color: 0x00ff00} );
-       window.cube = new THREE.Mesh( geometry, material );
-       cube.position.copy(new THREE.Vector3(-27, -94, 5))
-       scene.add( cube );
+      })
+      var geometry = new THREE.BoxGeometry(387, 0.001, 266)
+      //  var material = new THREE.MeshBasicMaterial( {color: 0x00ff00} )
+      window.cube = new THREE.Mesh(geometry, material)
+      cube.position.copy(new THREE.Vector3(-27, -94, 5))
+      scene.add(cube)
     },
     // Function called when download progresses
-    function ( xhr ) {
-      console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
+    function (xhr) {
+      // console.log((xhr.loaded / xhr.total * 100) + '% loaded')
     },
     // Function called when download errors
-    function ( xhr ) {
-      console.error( 'An error happened' );
+    function (xhr) {
+      console.error('An error happened')
     }
-  );
+  )
 
   // model
-  var onProgress = function (xhr) {
-    if (xhr.lengthComputable) {
-      var percentComplete = xhr.loaded / xhr.total * 100
-      console.log(Math.round(percentComplete, 2) + '% downloaded')
-    }
-  }
-  var onError = function (xhr) { }
   THREE.Loader.Handlers.add(/\.dds$/i, new THREE.DDSLoader())
   var mtlLoader = new THREE.MTLLoader()
   mtlLoader.setPath('../models/Miku/')
@@ -120,7 +102,11 @@ function init() {
 
       controls.target.copy(object.position)
       controls.update()
-    }, onProgress, onError)
+    }, (xhr) => {
+      // console.log(xhr)
+    }, (xhr) => {
+      console.log(xhr)
+    })
   })
 
   var objLoader = new THREE.OBJLoader()
@@ -132,30 +118,25 @@ function init() {
     object.scale.z = 20
     scene.add(object)
     // console.log('stage loading')
-  }, onProgress, onError)
+  }, (xhr) => {
+    // console.log(xhr)
+  }, (xhr) => {
+    console.log(xhr)
+  })
 
-  document.addEventListener('mousemove', onDocumentMouseMove, false)
-  //
   window.addEventListener('resize', onWindowResize, false)
 }
 function onWindowResize() {
-  windowHalfX = window.innerWidth / 2
-  windowHalfY = window.innerHeight / 2
   camera.aspect = window.innerWidth / window.innerHeight
   camera.updateProjectionMatrix()
   renderer.setSize(window.innerWidth, window.innerHeight)
 }
-function onDocumentMouseMove(event) {
-  mouseX = (event.clientX - windowHalfX) / 2
-  mouseY = (event.clientY - windowHalfY) / 2
-}
-//
+
 function animate() {
   requestAnimationFrame(animate)
   render()
 }
+
 function render() {
-  // lightHelper.update();
-  // directionalLighthelper.update()
   renderer.render(scene, camera)
 }

@@ -70,22 +70,20 @@
 /* global THREE */
 var container, stats;
 var camera, scene, renderer;
-var mouseX = 0,
-    mouseY = 0;
-var windowHalfX = window.innerWidth / 2;
-var windowHalfY = window.innerHeight / 2;
-
-// var lightHelper
-// var directionalLighthelper
-
 
 init();
 animate();
+
 function init() {
+  // scene
+  scene = new THREE.Scene();
+
+  // canvas
   container = document.createElement('div');
   document.body.appendChild(container);
   camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 2000);
   camera.position.z = 250;
+  scene.add(camera);
 
   renderer = new THREE.WebGLRenderer();
   renderer.setPixelRatio(window.devicePixelRatio);
@@ -99,8 +97,7 @@ function init() {
   controls.maxDistance = 800;
   controls.enablePan = true;
 
-  // scene
-  scene = new THREE.Scene();
+  // lights
   var ambientLight = new THREE.AmbientLight(0xcccccc, 0.4);
   scene.add(ambientLight);
 
@@ -111,9 +108,6 @@ function init() {
   scene.add(directionalLight);
   scene.add(target);
   directionalLight.target = target;
-  // directionalLighthelper = new THREE.DirectionalLightHelper( directionalLight, 5 );
-
-  // scene.add( directionalLighthelper )
 
   // spotlight
   var spotLight = new THREE.SpotLight(0xffff00, 1);
@@ -129,14 +123,8 @@ function init() {
   spotLight.shadow.camera.far = 200;
   scene.add(spotLight);
 
-  // lightHelper = new THREE.SpotLightHelper( spotLight );
-  // scene.add( lightHelper );
-
-  scene.add(camera);
-
+  // floor texture
   var loader = new THREE.TextureLoader();
-
-  // load a resource
   loader.load(
   // resource URL
   '../images/floor.jpg',
@@ -150,7 +138,7 @@ function init() {
       opacity: 0.5
     });
     var geometry = new THREE.BoxGeometry(387, 0.001, 266);
-    //  var material = new THREE.MeshBasicMaterial( {color: 0x00ff00} );
+    //  var material = new THREE.MeshBasicMaterial( {color: 0x00ff00} )
     window.cube = new THREE.Mesh(geometry, material);
     cube.position.copy(new THREE.Vector3(-27, -94, 5));
     scene.add(cube);
@@ -165,13 +153,6 @@ function init() {
   });
 
   // model
-  var onProgress = function (xhr) {
-    if (xhr.lengthComputable) {
-      var percentComplete = xhr.loaded / xhr.total * 100;
-      console.log(Math.round(percentComplete, 2) + '% downloaded');
-    }
-  };
-  var onError = function (xhr) {};
   THREE.Loader.Handlers.add(/\.dds$/i, new THREE.DDSLoader());
   var mtlLoader = new THREE.MTLLoader();
   mtlLoader.setPath('../models/Miku/');
@@ -189,7 +170,11 @@ function init() {
 
       controls.target.copy(object.position);
       controls.update();
-    }, onProgress, onError);
+    }, xhr => {
+      console.log(xhr);
+    }, xhr => {
+      console.log(xhr);
+    });
   });
 
   var objLoader = new THREE.OBJLoader();
@@ -201,31 +186,26 @@ function init() {
     object.scale.z = 20;
     scene.add(object);
     // console.log('stage loading')
-  }, onProgress, onError);
+  }, xhr => {
+    console.log(xhr);
+  }, xhr => {
+    console.log(xhr);
+  });
 
-  document.addEventListener('mousemove', onDocumentMouseMove, false);
-  //
   window.addEventListener('resize', onWindowResize, false);
 }
 function onWindowResize() {
-  windowHalfX = window.innerWidth / 2;
-  windowHalfY = window.innerHeight / 2;
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
 }
-function onDocumentMouseMove(event) {
-  mouseX = (event.clientX - windowHalfX) / 2;
-  mouseY = (event.clientY - windowHalfY) / 2;
-}
-//
+
 function animate() {
   requestAnimationFrame(animate);
   render();
 }
+
 function render() {
-  // lightHelper.update();
-  // directionalLighthelper.update()
   renderer.render(scene, camera);
 }
 
