@@ -30,7 +30,7 @@ function init() {
   renderer.setPixelRatio(window.devicePixelRatio)
   renderer.setSize(window.innerWidth, window.innerHeight)
   renderer.shadowMap.enabled = true
-  renderer.shadowMap.type = THREE.BasicShadowMap // PCF shadowMap now
+  renderer.shadowMap.type = THREE.PCFShadowMap // PCF shadowMap now
   container.appendChild(renderer.domElement)
 
   // control
@@ -39,6 +39,19 @@ function init() {
   controls.minDistance = 10
   controls.maxDistance = 800
   controls.enablePan = true
+
+  // mirror reflector
+  var verticalMirror = new THREE.Reflector(400, 350, {
+    clipBias: 0.002,
+    textureWidth: SCREEN_WIDTH * window.devicePixelRatio,
+    textureHeight: SCREEN_HEIGHT * window.devicePixelRatio,
+    color: 0x889999,
+    recursion: 1
+  })
+  verticalMirror.position.y = 50
+  verticalMirror.position.x = -20
+  verticalMirror.position.z = -128
+  scene.add(verticalMirror)
 
   // lights
   var ambientLight = new THREE.AmbientLight(0xcccccc, 0.4)
@@ -66,7 +79,7 @@ function init() {
   spotLight.shadow.mapSize.width = SHADOW_MAP_WIDTH
   spotLight.shadow.mapSize.height = SHADOW_MAP_HEIGHT
   spotLight.shadow.camera.near = 10
-  spotLight.shadow.camera.far = 200
+  spotLight.shadow.camera.far = 180
   scene.add(spotLight)
 
   // floor texture
