@@ -71,6 +71,16 @@
 var container, stats;
 var camera, scene, renderer;
 
+// shadowMap variable
+var SHADOW_MAP_WIDTH = 1024;
+var SHADOW_MAP_HEIGHT = 1024;
+
+// screen variable
+var SCREEN_WIDTH = window.innerWidth;
+var SCREEN_HEIGHT = window.innerHeight;
+var NEAR = 1;
+var FAR = 2000;
+
 init();
 animate();
 
@@ -81,13 +91,15 @@ function init() {
   // canvas
   container = document.createElement('div');
   document.body.appendChild(container);
-  camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 2000);
+  camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, NEAR, FAR);
   camera.position.z = 250;
   scene.add(camera);
 
   renderer = new THREE.WebGLRenderer();
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.BasicShadowMap; // PCF shadowMap now
   container.appendChild(renderer.domElement);
 
   // control
@@ -116,9 +128,12 @@ function init() {
   spotLight.penumbra = 0.08;
   spotLight.decay = 2;
   spotLight.distance = 400;
+  spotLight.shadow.bias = 0.0001;
   spotLight.castShadow = true;
-  spotLight.shadow.mapSize.width = 1024;
-  spotLight.shadow.mapSize.height = 1024;
+  spotLight.shadowDarkness = 1;
+  spotLight.shadowCameraVisible = true;
+  spotLight.shadow.mapSize.width = SHADOW_MAP_WIDTH;
+  spotLight.shadow.mapSize.height = SHADOW_MAP_HEIGHT;
   spotLight.shadow.camera.near = 10;
   spotLight.shadow.camera.far = 200;
   scene.add(spotLight);
@@ -141,11 +156,13 @@ function init() {
     //  var material = new THREE.MeshBasicMaterial( {color: 0x00ff00} )
     window.cube = new THREE.Mesh(geometry, material);
     cube.position.copy(new THREE.Vector3(-27, -94, 5));
+    cube.castShadow = false;
+    cube.receiveShadow = true;
     scene.add(cube);
   },
   // Function called when download progresses
   function (xhr) {
-    console.log(xhr.loaded / xhr.total * 100 + '% loaded');
+    // console.log((xhr.loaded / xhr.total * 100) + '% loaded')
   },
   // Function called when download errors
   function (xhr) {
@@ -164,6 +181,11 @@ function init() {
     objLoader.load('Miku.obj', function (object) {
       object.position.y = -95;
       object.position.x = -25;
+      object.traverse(function (node) {
+        if (node instanceof THREE.Mesh) {
+          node.castShadow = true;
+        }
+      });
       scene.add(object);
 
       spotLight.target = object;
@@ -171,7 +193,7 @@ function init() {
       controls.target.copy(object.position);
       controls.update();
     }, xhr => {
-      console.log(xhr);
+      // console.log(xhr)
     }, xhr => {
       console.log(xhr);
     });
@@ -184,16 +206,22 @@ function init() {
     object.scale.x = 20;
     object.scale.y = 20;
     object.scale.z = 20;
+    object.traverse(function (node) {
+      if (node instanceof THREE.Mesh) {
+        node.receiveShadow = true;
+      }
+    });
     scene.add(object);
     // console.log('stage loading')
   }, xhr => {
-    console.log(xhr);
+    // console.log(xhr)
   }, xhr => {
     console.log(xhr);
   });
 
   window.addEventListener('resize', onWindowResize, false);
 }
+
 function onWindowResize() {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
