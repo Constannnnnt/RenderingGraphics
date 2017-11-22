@@ -111,7 +111,7 @@ function init() {
 
   // mirror reflector
   var verticalMirror = new THREE.Reflector(400, 350, {
-    clipBias: 0.002,
+    clipBias: 0.001,
     textureWidth: SCREEN_WIDTH * window.devicePixelRatio,
     textureHeight: SCREEN_HEIGHT * window.devicePixelRatio,
     color: 0x889999,
@@ -120,6 +120,7 @@ function init() {
   verticalMirror.position.y = 50;
   verticalMirror.position.x = -20;
   verticalMirror.position.z = -128;
+  // verticalMirror.rotateX(Math.PI / 2)
   scene.add(verticalMirror);
 
   // lights
@@ -197,11 +198,13 @@ function init() {
       object.traverse(function (node) {
         if (node instanceof THREE.Mesh) {
           node.castShadow = true;
+          node.receiveShadow = false;
         }
       });
       scene.add(object);
 
       spotLight.target = object;
+      verticalMirror.target = object;
 
       controls.target.copy(object.position);
       controls.update();
@@ -221,6 +224,7 @@ function init() {
     object.scale.z = 20;
     object.traverse(function (node) {
       if (node instanceof THREE.Mesh) {
+        node.castShadow = false;
         node.receiveShadow = true;
       }
     });
