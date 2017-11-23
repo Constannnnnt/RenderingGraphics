@@ -8,8 +8,10 @@ import { debug, inspect } from 'util';
 var container, stats
 var camera, scene, renderer
 var controls, ambientLight, directionalLight, spotLight, pointLight, planeuniform
-var miku, stage
+var miku, stage, floor
 var depthTarget, postCamera, postScene, renderDepthFlag = false, depthuniform
+
+window.pickableObjectList = []
 window.particleEngine = null
 
 // shadowMap variable
@@ -77,7 +79,6 @@ function init() {
 
   // spotlight
   spotLight = new THREE.SpotLight(0xffff00, 1)
-  window.t = spotLight
   spotLight.position.set(5, 95, 100)
   spotLight.angle = Math.PI / 8
   spotLight.penumbra = 0.08
@@ -104,11 +105,12 @@ function init() {
       })
       var geometry = new THREE.BoxGeometry(387, 0.0001, 266)
       //  var material = new THREE.MeshBasicMaterial( {color: 0x00ff00} )
-      let cube = new THREE.Mesh(geometry, material)
-      cube.position.copy(new THREE.Vector3(-27, -94, 5))
-      cube.castShadow = false
-      cube.receiveShadow = true
-      scene.add(cube)
+      floor = new THREE.Mesh(geometry, material)
+      floor.position.copy(new THREE.Vector3(-27, -94, 5))
+      floor.castShadow = false
+      floor.receiveShadow = true
+      scene.add(floor)
+      pickableObjectList.push({object: floor})
     },
     function (xhr) {
       // console.log((xhr.loaded / xhr.total * 100) + '% loaded')
@@ -163,6 +165,7 @@ function init() {
         stage = object
         scene.add(object)
 
+        pickableObjectList.push({object: miku}, {object: stage})
         initGUI()
       }, (xhr) => {
         // console.log(xhr)
@@ -175,10 +178,6 @@ function init() {
       console.log(xhr)
     })
   })
-
-  // var spotLightHelper = new THREE.SpotLightHelper(projLight)
-  // scene.add(spotLightHelper)
-
   let huajiTexture = textureLoader.load("../images/huaji.png")
   let backboardTex = textureLoader.load("../images/backboard.jpg")
 
@@ -199,23 +198,27 @@ function init() {
     uniforms: uniforms,
     lights: true
   })
+
+  let huajiArray = new THREE.Group()
   let box = new THREE.Mesh(new THREE.BoxBufferGeometry(10, 10, 10), m)
-  scene.add(box)
+  huajiArray.add(box)
   box = new THREE.Mesh(new THREE.BoxBufferGeometry(10, 10, 10), m)
   box.position.set(0, -10, 0)
-  scene.add(box)
+  huajiArray.add(box)
   box = new THREE.Mesh(new THREE.BoxBufferGeometry(10, 10, 10), m)
   box.position.set(0, -20, 0)
-  scene.add(box)
+  huajiArray.add(box)
   box = new THREE.Mesh(new THREE.BoxBufferGeometry(10, 10, 10), m)
   box.position.set(0, -30, 0)
-  scene.add(box)
+  huajiArray.add(box)
   box = new THREE.Mesh(new THREE.BoxBufferGeometry(10, 10, 10), m)
   box.position.set(0, -40, 0)
-  scene.add(box)
+  huajiArray.add(box)
   box = new THREE.Mesh(new THREE.BoxBufferGeometry(10, 10, 10), m)
   box.position.set(0, -50, 0)
-  scene.add(box)
+  huajiArray.add(box)
+  scene.add(huajiArray)
+  pickableObjectList.push({object: huajiArray})
 
   particleSystem('clouds')
 
@@ -286,6 +289,7 @@ function init() {
   initDepth()
 
   window.addEventListener('resize', onWindowResize, false)
+  window.addEventListener('mouseup', pick, false)
 
   //mirror reflector
   // var verticalMirror = new THREE.Reflector(400, 350, {
@@ -521,6 +525,7 @@ function particleSystem(effectName) {
 }
 
 function initDepth() {
+  if (depthTarget) { depthTarget.dispose() }
   depthTarget = new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight)
   depthTarget.texture.format = THREE.RGBFormat
   depthTarget.texture.minFilter = THREE.NearestFilter
@@ -547,4 +552,106 @@ function initDepth() {
   var postQuad = new THREE.Mesh(postPlane, postMaterial)
   postScene = new THREE.Scene()
   postScene.add(postQuad)
+}
+
+var GPUPickerMaterial = new THREE.ShaderMaterial({
+  uniforms: {
+    color: {
+      value: new THREE.Color()
+    }
+  },
+  vertexShader:
+  `
+  void main(){
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+  `,
+  fragmentShader:
+  `
+  uniform vec3 color;
+  void main(){
+    gl_FragColor = vec4(color, 1.0);
+  }
+  `
+})
+var visibilityMapping = {}
+function pick (event) {
+  let x = event.clientX
+  let y = event.clientY
+  let mouse = {x, y}
+
+  scene.traverse((obj) => {
+    visibilityMapping[obj.uuid] = obj.visible
+    obj.visible = false
+  })
+  scene.visible = true
+
+  pickableObjectList.map((obj, index) => {
+    obj.object.visible = true
+    obj.ID = index
+    obj.materials = []
+    obj.object.traverse((c) => {
+      c.visible = true
+      if (c instanceof THREE.Mesh) {
+        c.visible = true
+        obj.materials.push(c.material)
+        c.material = GPUPickerMaterial.clone()
+        c.material.uniforms.color.value = new THREE.Color().setHex(obj.ID)
+      }
+    })
+  })
+  // renderer.render(scene, camera)
+
+  let pickingTexture = new THREE.WebGLRenderTarget()
+  let size = renderer.getSize()
+  let pixelBuffer = new Uint8Array(4 * size.width * size.height)
+  pickingTexture.setSize(size.width, size.height)
+  pickingTexture.texture.minFilter = THREE.LinearFilter
+  pickingTexture.texture.generateMipmaps = false
+  renderer.render(scene, camera, pickingTexture)
+  renderer.readRenderTargetPixels(pickingTexture, 0, 0, size.width, size.height, pixelBuffer)
+
+  // var canvaswindow = window.open("", "_blank")
+  // canvaswindow.document.write(
+  //   `
+  //     <title>test</title>
+  //     <p>test</p>
+  //     <p>rgb</p>
+  //     <div><canvas id="targetrgb" width=${size.width} height=${size.height} /></div>
+  //     `
+  // )
+  // var c = canvaswindow.document.getElementById('targetrgb')
+  // var ctx = c.getContext("2d")
+  // ctx.clearRect(0, 0, size.width, size.height)
+  // var rgbimdata = ctx.createImageData(size.width, size.height)
+  // for (let i = 0; i < rgbimdata.data.length; i += 1) {
+  //   rgbimdata.data[i] = pixelBuffer[i]
+  // }
+  // ctx.putImageData(rgbimdata, 0, 0)
+
+  // restore visibility
+  pickableObjectList.map((obj) => {
+    obj.object.traverse((c) => {
+      if (c instanceof THREE.Mesh) {
+        c.material = obj.materials.shift()
+      }
+    })
+  })
+
+  scene.traverse((obj) => {
+    obj.visible = visibilityMapping[obj.uuid]
+  })
+
+  let index = (mouse.x + (pickingTexture.height - mouse.y) * pickingTexture.width) * 4
+  let id = (pixelBuffer[index] * 255 * 255) | (pixelBuffer[index + 1] * 255) | (pixelBuffer[index + 2])
+  if (id < pickableObjectList.length) {
+    let result
+    pickableObjectList.map((obj) => {
+      if (obj.ID === id) { result = obj }
+    })
+    console.log('picked target', result)
+  } else {
+    console.log('no object picked')
+  }
+  pickingTexture.dispose()
 }
