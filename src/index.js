@@ -2,6 +2,7 @@
 import phong from './shaders/phong.js'
 
 import depthShader from './shaders/depth.js'
+import MatcapShader from './shaders/Matcap.js'
 import { ParticleEngine } from './ParticleEngine/ParticleEngine.js'
 import { Examples } from './ParticleEngine/ParticleEngineExamples.js'
 import { debug, inspect } from 'util';
@@ -294,6 +295,7 @@ function init() {
   plane.material.uniforms.textureMatrixProj.value = makeProjectiveMatrixForLight(spotLight2)
 
   initDepth()
+  initMatcap()
 
   window.addEventListener('resize', onWindowResize, false)
 
@@ -651,4 +653,17 @@ function initDepth() {
   var postQuad = new THREE.Mesh(postPlane, postMaterial)
   postScene = new THREE.Scene()
   postScene.add(postQuad)
+}
+
+function initMatcap() {
+  let textureLoader = new THREE.TextureLoader()
+  let texture = textureLoader.load('../images/matcap-1.jpg')
+  let material = new THREE.ShaderMaterial({
+    fragmentShader: MatcapShader.frag,
+    vertexShader: MatcapShader.vert,
+    uniforms: MatcapShader.unif
+  })
+  let mesh = new THREE.Mesh(new THREE.BoxGeometry(10, 10, 10), material)
+  mesh.position.set(100, 0, 0)
+  scene.add(mesh)
 }

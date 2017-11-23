@@ -531,12 +531,14 @@ ParticleEngine.prototype.destroy = function () {}
 "use strict";
 Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__shaders_phong_js__ = __webpack_require__(2);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__shaders_depth_js__ = __webpack_require__(9);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__ParticleEngine_ParticleEngine_js__ = __webpack_require__(0);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_3__ParticleEngine_ParticleEngineExamples_js__ = __webpack_require__(3);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_4_util__ = __webpack_require__(4);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_4_util___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_4_util__);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__shaders_depth_js__ = __webpack_require__(3);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__shaders_Matcap_js__ = __webpack_require__(4);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_3__ParticleEngine_ParticleEngine_js__ = __webpack_require__(0);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_4__ParticleEngine_ParticleEngineExamples_js__ = __webpack_require__(7);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_5_util__ = __webpack_require__(8);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_5_util___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_5_util__);
 // import * as THREE from 'three'
+
 
 
 
@@ -545,12 +547,9 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
 
 var container, stats;
 var camera, scene, renderer;
-<<<<<<< HEAD
 var controls, ambientLight, directionalLight, spotLight;
 var pointLight, planeuniform, verticalMirror, spotLight2;
-=======
-var controls, ambientLight, directionalLight, spotLight, pointLight, planeuniform;
->>>>>>> 78ff130aa23d274f4d41d8142c46c271173ea831
+
 var miku, stage;
 var depthTarget,
     postCamera,
@@ -621,8 +620,10 @@ function init() {
   pointLight.castShadow = true;
   scene.add(pointLight);
   var sphereSize = 1;
+
   pointLightHelper = new THREE.PointLightHelper(pointLight, sphereSize);
   pointLightHelper.visible = false;
+
   scene.add(pointLightHelper);
 
   // spotlight
@@ -832,11 +833,11 @@ function init() {
   plane.material.uniforms.textureMatrixProj.value = makeProjectiveMatrixForLight(spotLight2);
 
   initDepth();
+  initMatcap();
 
   window.addEventListener('resize', onWindowResize, false);
 
   //mirror reflector
-<<<<<<< HEAD
   verticalMirror = new THREE.Reflector(400, 350, {
     clipBias: 0.002,
     textureWidth: SCREEN_WIDTH * window.devicePixelRatio,
@@ -851,21 +852,6 @@ function init() {
   verticalMirror.visible = false;
   // verticalMirror.lookAtPosition.add(-camera.matrixWorld.position)
   scene.add(verticalMirror);
-=======
-  // var verticalMirror = new THREE.Reflector(400, 350, {
-  //   clipBias: 0.002,
-  //   textureWidth: SCREEN_WIDTH * window.devicePixelRatio,
-  //   textureHeight: SCREEN_HEIGHT * window.devicePixelRatio,
-  //   color: 0x889999,
-  //   recursion: 1
-  // })
-  // verticalMirror.position.y = 50
-  // verticalMirror.position.x = -260
-  // verticalMirror.position.z = -70
-  // verticalMirror.rotateY(Math.PI / 2)
-  // // verticalMirror.lookAtPosition.add(-camera.matrixWorld.position)
-  // scene.add(verticalMirror)
->>>>>>> 78ff130aa23d274f4d41d8142c46c271173ea831
 }
 
 function onWindowResize() {
@@ -1143,7 +1129,7 @@ function initGUI() {
 }
 
 function particleSystem(effectName) {
-  let example = new __WEBPACK_IMPORTED_MODULE_3__ParticleEngine_ParticleEngineExamples_js__["a" /* Examples */]();
+  let example = new __WEBPACK_IMPORTED_MODULE_4__ParticleEngine_ParticleEngineExamples_js__["a" /* Examples */]();
   let paras = example.getEffect(effectName);
 
   if (!paras) {
@@ -1155,7 +1141,7 @@ function particleSystem(effectName) {
   loader.load('../images/smokeparticle.png', _texture => {
     paras.particleTexture = _texture;
     let group = new THREE.Group();
-    particleEngine = new __WEBPACK_IMPORTED_MODULE_2__ParticleEngine_ParticleEngine_js__["a" /* ParticleEngine */]();
+    particleEngine = new __WEBPACK_IMPORTED_MODULE_3__ParticleEngine_ParticleEngine_js__["a" /* ParticleEngine */]();
     particleEngine.setValues(paras);
     particleEngine.initialize();
 
@@ -1195,6 +1181,19 @@ function initDepth() {
   var postQuad = new THREE.Mesh(postPlane, postMaterial);
   postScene = new THREE.Scene();
   postScene.add(postQuad);
+}
+
+function initMatcap() {
+  let textureLoader = new THREE.TextureLoader();
+  let texture = textureLoader.load('../images/matcap-1.jpg');
+  let material = new THREE.ShaderMaterial({
+    fragmentShader: __WEBPACK_IMPORTED_MODULE_2__shaders_Matcap_js__["a" /* default */].frag,
+    vertexShader: __WEBPACK_IMPORTED_MODULE_2__shaders_Matcap_js__["a" /* default */].vert,
+    uniforms: __WEBPACK_IMPORTED_MODULE_2__shaders_Matcap_js__["a" /* default */].unif
+  });
+  let mesh = new THREE.Mesh(new THREE.BoxGeometry(10, 10, 10), material);
+  mesh.position.set(100, 0, 0);
+  scene.add(mesh);
 }
 
 /***/ }),
@@ -1356,6 +1355,317 @@ void main() {
 
 /***/ }),
 /* 3 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+var depthShader = {};
+
+depthShader.vert = `
+varying vec2 vUv;
+void main() {
+  vUv = uv;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}
+`;
+
+depthShader.frag = `
+#include <packing>
+varying vec2 vUv;
+uniform sampler2D tDiffuse;
+uniform sampler2D tDepth;
+uniform float cameraNear;
+uniform float cameraFar;
+
+float readDepth (sampler2D depthSampler, vec2 coord) {
+  float fragCoordZ = texture2D(depthSampler, coord).x;
+  float viewZ = perspectiveDepthToViewZ( fragCoordZ, cameraNear, cameraFar );
+  return viewZToOrthographicDepth( viewZ, cameraNear, cameraFar );
+}
+
+float remap( float minval, float maxval, float curval )
+{
+    return ( curval - minval ) / ( maxval - minval );
+}
+
+void main() {
+  // vec3 diffuse = texture2D(tDiffuse, vUv).rgb;
+  float depth = readDepth(tDepth, vUv);
+
+  const vec4 GREEN = vec4( 0.0, 1.0, 0.0, 1.0 );
+  const vec4 BLUE = vec4( 0.0, 0.0, 1.0, 1.0 );
+  const vec4 RED   = vec4( 1.0, 0.0, 0.0, 1.0 );
+
+  if( depth < 0.5 )
+    gl_FragColor = mix( GREEN, BLUE, remap( 0.0, 0.5, depth ) );
+  else
+    gl_FragColor = mix( BLUE, RED, remap( 0.5, 1.0, depth ) );
+  // gl_FragColor.rgb = vec3(depth);
+  // gl_FragColor.a = 1.0;
+}
+`;
+
+/* harmony default export */ __webpack_exports__["a"] = (depthShader);
+
+/***/ }),
+/* 4 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__SelfShaderChunks__ = __webpack_require__(5);
+
+
+var MatcapShader = {};
+
+MatcapShader.unif = `
+    bumpMapUsed: {type: 'f', value: 0.0}, // mtl bump or map_bump exists
+    bumpMap: {type: 't', value: null}, // mtl map_bump
+    bumpScale: {type: 'f', value: 1.0}, // mtl bump or map_bump scale
+    bumpMapPath: {value: null},
+    normalMapUsed: {type: 'f', value: 0.0}, // the normal map
+    normalMap: {type: 't', value: null},
+    normalScale: {type: 'v2', value: [1.0, 1.0]},
+    normalMapPath: {value: null},
+    displacementMapUsed: {type: 'f', value: 0.0},
+    displacementMap: {type: 't', value: null},
+    displacementScale: {type: 'f', value: 0.0},
+    displacementBias: {type: 'f', value: 0.0},
+    displacementMapPath: {value: null},
+
+    ka: {type: 'v3', value: [0.2, 0.2, 0.2]}, // mtl ka, ambient color
+    mapKaUsed: {type: 'f', value: 0.0},
+    mapKa: {type: 't', value: null},
+    mapKaPath: {value: null},
+    mapKaWidth: {type: 'f', value: 1.0},
+    mapKaHeight: {type: 'f', value: 1.0},
+    kd: {type: 'v3', value: [0.1, 0.1, 1.0]}, // mtl kd, diffuse color
+    mapKdUsed: {type: 'f', value: 0.0}, // mtl map_kd exists or not
+    mapKd: {type: 't', value: null}, // mtl map_kd, diffuse map
+    mapKdPath: {value: null},
+    mapKdWidth: {type: 'f', value: 1.0},
+    mapKdHeight: {type: 'f', value: 1.0},
+    ks: {type: 'v3', value: [1.0, 0.1, 0.1]}, // mtl ks, specular color
+    mapKsUsed: {type: 'f', value: 0.0},
+    mapKs: {type: 't', value: null},
+    mapKsPath: {value: null},
+    mapKsWidth: {type: 'f', value: 1.0},
+    mapKsHeight: {type: 'f', value: 1.0},
+    ns: {type: 'f', value: 20.0}, // mtl ns, specular shininess
+
+    d: {type: 'f', value: 1.0}, // opacity, the alpha channel
+
+    // matcap parameters
+    MatcapTextureUsed: {type: 'f', value: 0.0},
+    MatcapTexture: {type: 't', value: null},
+    MatcapTexturePath: {value: null},
+    fraction: {type: 'v3', value: [1.0, 1.0, 1.0]}
+`, MatcapShader.vert = `
+varying vec2 vUv;
+varying vec3 vNormal;
+varying vec3 vViewPosition;
+` + __WEBPACK_IMPORTED_MODULE_0__SelfShaderChunks__["a" /* default */].DisplacementMapPositionCalculation_vertex + `void main()
+{
+  // passing texture to fragment shader
+  vUv = uv;
+  vNormal = normalize(normalMatrix * normal);
+  vViewPosition = -(modelViewMatrix * vec4(position, 1.0)).xyz;
+
+  vec3 transformedPosition = position + displacementMapOffset(normal, uv);
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(transformedPosition,1.0);
+}
+`, MatcapShader.frag = `
+#define USE_BUMPMAP
+#define USE_NORMALMAP
+varying vec2 vUv;
+varying vec3 vNormal;
+varying vec3 vViewPosition;
+
+uniform sampler2D MatcapTexture;
+uniform float MatcapTextureUsed;
+
+uniform float bumpMapUsed;
+uniform float normalMapUsed;
+
+uniform vec3 fraction;
+` + THREE.ShaderChunk['bumpmap_pars_fragment'] + THREE.ShaderChunk['normalmap_pars_fragment'] + `
+void main() {
+    vec3 modelPosition = -vViewPosition;
+    vec3 treatedNormal = normalize(vNormal);
+    if (bumpMapUsed > 0.5) treatedNormal = perturbNormalArb(modelPosition, treatedNormal, dHdxy_fwd());
+    if (normalMapUsed > 0.5) treatedNormal = perturbNormal2Arb(modelPosition, treatedNormal);
+    vec3 r = reflect(treatedNormal, normalize(modelPosition));
+    float m = 2.0 * sqrt(pow(r.x, 2.0) + pow(r.y, 2.0) + pow(r.z + 1.5, 2.0));
+    vec2 matcapuv = r.xy / m + 0.5;
+
+    vec3 base = fraction;
+    if (MatcapTextureUsed > 0.5) {
+        base *= texture2D(MatcapTexture, matcapuv).rgb;
+    }
+
+    gl_FragColor = vec4(base, 1.0);
+}
+`;
+
+/* harmony default export */ __webpack_exports__["a"] = (MatcapShader);
+
+/***/ }),
+/* 5 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+var SelfShaderChunks = {
+  DisplacementMapPositionCalculation_vertex: `
+uniform float displacementMapUsed;
+uniform sampler2D displacementMap;
+uniform float displacementScale;
+uniform float displacementBias;
+vec3 displacementMapOffset(vec3 normal, vec2 uv){
+  if(displacementMapUsed>0.5){
+    return normalize(normal) * (texture2D(displacementMap, uv).x * displacementScale + displacementBias);
+  }else{
+    return vec3(0.0);
+  }
+}
+`,
+  SimplePostProcessingColorCalculation_fragment: `
+uniform float red, green, blue, alpha;
+uniform float lighting;
+uniform vec2 contract;
+vec4 calculateSimplePostProcessingColor(vec4 color){
+  vec3 tempColor = color.rgb;
+  tempColor += vec3(red, blue, green);
+  for(int i=0;i<3;++i){
+      if(tempColor[i]<0.0)tempColor[i]=0.0;
+      else if(tempColor[i]>1.0)tempColor[i]=1.0;
+    }
+    if(lighting>0.0){
+      tempColor = log(tempColor*(lighting+1.0)+vec3(1.0))/log(vec3(lighting+2.0));
+    }
+    else{
+      tempColor = pow(tempColor,vec3(1.0-lighting));
+    }
+    for(int i=0;i<3;++i){
+      if(tempColor[i]<contract[0])tempColor[i]=0.0;
+      else if(tempColor[i]>contract[1])tempColor[i]=1.0;
+      else{
+        tempColor[i] = (tempColor[i]-contract[0])/(contract[1]-contract[0]);
+      }
+    }
+    return vec4(tempColor, color.a * alpha);
+}
+`,
+  MatrixTranspose:
+  // https://github.com/stackgl/glsl-transpose/blob/master/index.glsl
+  `
+float transpose(float m) {
+  return m;
+}
+
+mat2 transpose(mat2 m) {
+  return mat2(m[0][0], m[1][0],
+              m[0][1], m[1][1]);
+}
+
+mat3 transpose(mat3 m) {
+  return mat3(m[0][0], m[1][0], m[2][0],
+              m[0][1], m[1][1], m[2][1],
+              m[0][2], m[1][2], m[2][2]);
+}
+
+mat4 transpose(mat4 m) {
+  return mat4(m[0][0], m[1][0], m[2][0], m[3][0],
+              m[0][1], m[1][1], m[2][1], m[3][1],
+              m[0][2], m[1][2], m[2][2], m[3][2],
+              m[0][3], m[1][3], m[2][3], m[3][3]);
+}
+`,
+  MatrixInverse:
+  // https://github.com/stackgl/glsl-inverse/blob/master/index.glsl
+  `
+float inverse(float m) {
+  return 1.0 / m;
+}
+
+mat2 inverse(mat2 m) {
+  return mat2(m[1][1],-m[0][1],
+             -m[1][0], m[0][0]) / (m[0][0]*m[1][1] - m[0][1]*m[1][0]);
+}
+
+mat3 inverse(mat3 m) {
+  float a00 = m[0][0], a01 = m[0][1], a02 = m[0][2];
+  float a10 = m[1][0], a11 = m[1][1], a12 = m[1][2];
+  float a20 = m[2][0], a21 = m[2][1], a22 = m[2][2];
+
+  float b01 = a22 * a11 - a12 * a21;
+  float b11 = -a22 * a10 + a12 * a20;
+  float b21 = a21 * a10 - a11 * a20;
+
+  float det = a00 * b01 + a01 * b11 + a02 * b21;
+
+  return mat3(b01, (-a22 * a01 + a02 * a21), (a12 * a01 - a02 * a11),
+              b11, (a22 * a00 - a02 * a20), (-a12 * a00 + a02 * a10),
+              b21, (-a21 * a00 + a01 * a20), (a11 * a00 - a01 * a10)) / det;
+}
+
+mat4 inverse(mat4 m) {
+  float
+      a00 = m[0][0], a01 = m[0][1], a02 = m[0][2], a03 = m[0][3],
+      a10 = m[1][0], a11 = m[1][1], a12 = m[1][2], a13 = m[1][3],
+      a20 = m[2][0], a21 = m[2][1], a22 = m[2][2], a23 = m[2][3],
+      a30 = m[3][0], a31 = m[3][1], a32 = m[3][2], a33 = m[3][3],
+
+      b00 = a00 * a11 - a01 * a10,
+      b01 = a00 * a12 - a02 * a10,
+      b02 = a00 * a13 - a03 * a10,
+      b03 = a01 * a12 - a02 * a11,
+      b04 = a01 * a13 - a03 * a11,
+      b05 = a02 * a13 - a03 * a12,
+      b06 = a20 * a31 - a21 * a30,
+      b07 = a20 * a32 - a22 * a30,
+      b08 = a20 * a33 - a23 * a30,
+      b09 = a21 * a32 - a22 * a31,
+      b10 = a21 * a33 - a23 * a31,
+      b11 = a22 * a33 - a23 * a32,
+
+      det = b00 * b11 - b01 * b10 + b02 * b09 + b03 * b08 - b04 * b07 + b05 * b06;
+
+  return mat4(
+      a11 * b11 - a12 * b10 + a13 * b09,
+      a02 * b10 - a01 * b11 - a03 * b09,
+      a31 * b05 - a32 * b04 + a33 * b03,
+      a22 * b04 - a21 * b05 - a23 * b03,
+      a12 * b08 - a10 * b11 - a13 * b07,
+      a00 * b11 - a02 * b08 + a03 * b07,
+      a32 * b02 - a30 * b05 - a33 * b01,
+      a20 * b05 - a22 * b02 + a23 * b01,
+      a10 * b10 - a11 * b08 + a13 * b06,
+      a01 * b08 - a00 * b10 - a03 * b06,
+      a30 * b04 - a31 * b02 + a33 * b00,
+      a21 * b02 - a20 * b04 - a23 * b00,
+      a11 * b07 - a10 * b09 - a12 * b06,
+      a00 * b09 - a01 * b07 + a02 * b06,
+      a31 * b01 - a30 * b03 - a32 * b00,
+      a20 * b03 - a21 * b01 + a22 * b00) / det;
+}
+`,
+  getSharpnessMapColor: `
+vec3 getSharpnessMapColor(sampler2D map, vec2 vUv, float mapWidth, float mapHeight){
+  vec3 result = vec3(0.0);
+  result += 5.0 * texture2D(map, vUv).rgb;
+  result += -1.0 * texture2D(map, vec2(vUv.x - 1.0/mapWidth, vUv.y)).rgb;
+  result += -1.0 * texture2D(map, vec2(vUv.x + 1.0/mapWidth, vUv.y)).rgb;
+  result += -1.0 * texture2D(map, vec2(vUv.x, vUv.y - 1.0/mapHeight)).rgb;
+  result += -1.0 * texture2D(map, vec2(vUv.x, vUv.y + 1.0/mapHeight)).rgb;
+  result /= 1.0;
+  return result;
+}
+`
+};
+
+/* harmony default export */ __webpack_exports__["a"] = (SelfShaderChunks);
+
+/***/ }),
+/* 6 */,
+/* 7 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -1769,7 +2079,7 @@ class Examples {
 
 
 /***/ }),
-/* 4 */
+/* 8 */
 /***/ (function(module, exports, __webpack_require__) {
 
 /* WEBPACK VAR INJECTION */(function(global, process) {// Copyright Joyent, Inc. and other Node contributors.
@@ -2297,7 +2607,7 @@ function isPrimitive(arg) {
 }
 exports.isPrimitive = isPrimitive;
 
-exports.isBuffer = __webpack_require__(7);
+exports.isBuffer = __webpack_require__(11);
 
 function objectToString(o) {
   return Object.prototype.toString.call(o);
@@ -2341,7 +2651,7 @@ exports.log = function() {
  *     prototype.
  * @param {function} superCtor Constructor function to inherit prototype from.
  */
-exports.inherits = __webpack_require__(8);
+exports.inherits = __webpack_require__(12);
 
 exports._extend = function(origin, add) {
   // Don't do anything if add isn't an object
@@ -2359,10 +2669,10 @@ function hasOwnProperty(obj, prop) {
   return Object.prototype.hasOwnProperty.call(obj, prop);
 }
 
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(5), __webpack_require__(6)))
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(9), __webpack_require__(10)))
 
 /***/ }),
-/* 5 */
+/* 9 */
 /***/ (function(module, exports) {
 
 var g;
@@ -2389,7 +2699,7 @@ module.exports = g;
 
 
 /***/ }),
-/* 6 */
+/* 10 */
 /***/ (function(module, exports) {
 
 // shim for using process in browser
@@ -2579,7 +2889,7 @@ process.umask = function() { return 0; };
 
 
 /***/ }),
-/* 7 */
+/* 11 */
 /***/ (function(module, exports) {
 
 module.exports = function isBuffer(arg) {
@@ -2590,7 +2900,7 @@ module.exports = function isBuffer(arg) {
 }
 
 /***/ }),
-/* 8 */
+/* 12 */
 /***/ (function(module, exports) {
 
 if (typeof Object.create === 'function') {
@@ -2617,59 +2927,6 @@ if (typeof Object.create === 'function') {
   }
 }
 
-
-/***/ }),
-/* 9 */
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
-
-"use strict";
-var depthShader = {};
-
-depthShader.vert = `
-varying vec2 vUv;
-void main() {
-  vUv = uv;
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-}
-`;
-
-depthShader.frag = `
-#include <packing>
-varying vec2 vUv;
-uniform sampler2D tDiffuse;
-uniform sampler2D tDepth;
-uniform float cameraNear;
-uniform float cameraFar;
-
-float readDepth (sampler2D depthSampler, vec2 coord) {
-  float fragCoordZ = texture2D(depthSampler, coord).x;
-  float viewZ = perspectiveDepthToViewZ( fragCoordZ, cameraNear, cameraFar );
-  return viewZToOrthographicDepth( viewZ, cameraNear, cameraFar );
-}
-
-float remap( float minval, float maxval, float curval )
-{
-    return ( curval - minval ) / ( maxval - minval );
-}
-
-void main() {
-  // vec3 diffuse = texture2D(tDiffuse, vUv).rgb;
-  float depth = readDepth(tDepth, vUv);
-
-  const vec4 GREEN = vec4( 0.0, 1.0, 0.0, 1.0 );
-  const vec4 BLUE = vec4( 0.0, 0.0, 1.0, 1.0 );
-  const vec4 RED   = vec4( 1.0, 0.0, 0.0, 1.0 );
-
-  if( depth < 0.5 )
-    gl_FragColor = mix( GREEN, BLUE, remap( 0.0, 0.5, depth ) );
-  else
-    gl_FragColor = mix( BLUE, RED, remap( 0.5, 1.0, depth ) );
-  // gl_FragColor.rgb = vec3(depth);
-  // gl_FragColor.a = 1.0;
-}
-`;
-
-/* harmony default export */ __webpack_exports__["a"] = (depthShader);
 
 /***/ })
 /******/ ]);
