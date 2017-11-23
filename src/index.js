@@ -1,5 +1,5 @@
 // import * as THREE from 'three'
-import projTexShader2 from './shaders/projTexShader2'
+import phong from './shaders/phong.js'
 import { debug, inspect } from 'util';
 
 var container, stats
@@ -97,31 +97,31 @@ function init() {
   scene.add(spotLight)
 
   // floor texture
-  // let textureLoader = new THREE.TextureLoader()
-  // textureLoader.load(
-  //   '../images/floor.jpg',
-  //   function (texture) {
-  //     var material = new THREE.MeshBasicMaterial({
-  //       map: texture,
-  //       blending: THREE.AdditiveBlending,
-  //       transparent: true,
-  //       opacity: 0.5
-  //     })
-  //     var geometry = new THREE.BoxGeometry(387, 0.0001, 266)
-  //     //  var material = new THREE.MeshBasicMaterial( {color: 0x00ff00} )
-  //     let cube = new THREE.Mesh(geometry, material)
-  //     cube.position.copy(new THREE.Vector3(-27, -94, 5))
-  //     cube.castShadow = false
-  //     cube.receiveShadow = true
-  //     scene.add(cube)
-  //   },
-  //   function (xhr) {
-  //     // console.log((xhr.loaded / xhr.total * 100) + '% loaded')
-  //   },
-  //   function (xhr) {
-  //     console.error('An error happened')
-  //   }
-  // )
+  let textureLoader = new THREE.TextureLoader()
+  textureLoader.load(
+    '../images/floor.jpg',
+    function (texture) {
+      var material = new THREE.MeshBasicMaterial({
+        map: texture,
+        blending: THREE.AdditiveBlending,
+        transparent: true,
+        opacity: 0.5
+      })
+      var geometry = new THREE.BoxGeometry(387, 0.0001, 266)
+      //  var material = new THREE.MeshBasicMaterial( {color: 0x00ff00} )
+      let cube = new THREE.Mesh(geometry, material)
+      cube.position.copy(new THREE.Vector3(-27, -94, 5))
+      cube.castShadow = false
+      cube.receiveShadow = true
+      scene.add(cube)
+    },
+    function (xhr) {
+      // console.log((xhr.loaded / xhr.total * 100) + '% loaded')
+    },
+    function (xhr) {
+      console.error('An error happened')
+    }
+  )
 
   // Miku model
   THREE.Loader.Handlers.add(/\.dds$/i, new THREE.DDSLoader())
@@ -192,7 +192,7 @@ function init() {
   // var spotLightHelper = new THREE.SpotLightHelper(projLight)
   // scene.add(spotLightHelper)
 
-  // let backboardTexture = textureLoader.load("../images/floor.jpg")
+  let backboardTexture = textureLoader.load("../images/huaji.png")
   // textureLoader.load(
   //   "../images/huaji.png",
   //   function (textureProj) {
@@ -220,6 +220,22 @@ function init() {
   //     console.error('An error happened')
   //   }
   // )
+
+  window.shader = THREE.ShaderLib["phong"]
+  window.uniforms = THREE.UniformsUtils.clone(shader.uniforms)
+  uniforms["map"].value = backboardTexture
+  uniforms["showMapTexture"] = {
+    'type': 'b',
+    'value': true
+  }
+  window.m = new THREE.ShaderMaterial({
+    fragmentShader: phong.frag,
+    vertexShader: phong.vert,
+    uniforms: uniforms,
+    lights: true
+  })
+  window.box = new THREE.Mesh(new THREE.BoxGeometry(10, 10, 10), m)
+  scene.add(box)
 
   window.addEventListener('resize', onWindowResize, false)
 }
