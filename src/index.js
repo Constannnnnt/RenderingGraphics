@@ -256,6 +256,63 @@ function init() {
   box.position.set(0, -50, 0)
   scene.add(box)
 
+  let spotLight2 = new THREE.SpotLight(0xffff00, 0.3)
+  spotLight2.position.set(-70, 95, 100)
+  spotLight2.angle = Math.PI / 8
+  spotLight2.penumbra = 0.08
+  spotLight2.decay = 2
+  spotLight2.distance = 400
+  spotLight2.castShadow = true
+  spotLight2.shadow.mapSize.width = SHADOW_MAP_WIDTH
+  spotLight2.shadow.mapSize.height = SHADOW_MAP_HEIGHT
+  spotLight2.shadow.camera.near = 10
+  spotLight2.shadow.camera.far = 180
+
+  let planeuniform = THREE.UniformsUtils.clone(shader.uniforms)
+  planeuniform["diffuse"] = {
+    type: 'c',
+    value: new THREE.Color(0xffffff)
+  }
+  planeuniform["showMapTexture"] = {
+    value: false
+  }
+  planeuniform["map"] = {
+    value: null
+  }
+  planeuniform[ "mapProj"] = {
+    "type": "t", "value": backboardTexture
+  };
+  planeuniform[ "textureMatrixProj"] = {
+    "type": "m4", "value": new THREE.Matrix4()
+  };
+  planeuniform["spotLightPosition"] = {
+    value: spotLight2.position
+  }
+  planeuniform['spotLightColor'] = {
+    value: new THREE.Color(0xffffff)
+  }
+  let planegeo = new THREE.PlaneBufferGeometry(200, 200)
+  let planemtl = new THREE.ShaderMaterial({
+    fragmentShader: phong.frag,
+    vertexShader: phong.vert,
+    uniforms: planeuniform,
+    lights: true
+  })
+  let plane = new THREE.Mesh(planegeo, planemtl)
+  plane.position.set(-30, 0, -130)
+  scene.add(plane)
+
+  let targetObject = new THREE.Object3D()
+  targetObject.position.set(-30, 0, -130)
+  spotLight2.target = targetObject
+  targetObject.updateMatrixWorld()
+  scene.add(spotLight2)
+  scene.add(targetObject)
+
+  let spotlightHelper = new THREE.SpotLightHelper(spotLight2)
+  scene.add(spotlightHelper)
+  plane.material.uniforms.textureMatrixProj.value = makeProjectiveMatrixForLight(spotLight2)
+
   window.addEventListener('resize', onWindowResize, false)
 }
 
@@ -287,10 +344,12 @@ function makeProjectiveMatrixForLight(l) {
 
   lightCamera.matrixWorldInverse.getInverse(lightCamera.matrixWorld)
 
-  lightMatrix.set(0.5, 0.0, 0.0, 0.5,
+  lightMatrix.set(
+    0.5, 0.0, 0.0, 0.5,
     0.0, 0.5, 0.0, 0.5,
     0.0, 0.0, 0.5, 0.5,
-    0.0, 0.0, 0.0, 1.0)
+    0.0, 0.0, 0.0, 1.0
+  )
 
   lightMatrix.multiply(lightCamera.projectionMatrix)
   lightMatrix.multiply(lightCamera.matrixWorldInverse)

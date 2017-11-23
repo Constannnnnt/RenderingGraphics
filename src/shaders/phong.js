@@ -10,6 +10,12 @@ uniform float shininess;
 uniform float opacity;
 uniform bool showMapTexture;
 uniform float time;
+uniform sampler2D mapProj;
+varying vec4 texCoordProj;
+varying vec3 vNormalProj;
+varying vec3 vViewPositionProj;
+uniform vec3 spotLightPosition;
+uniform vec3 spotLightColor;
 #include <common>
 #include <packing>
 #include <dithering_pars_fragment>
@@ -65,6 +71,11 @@ void main() {
 	vec3 outgoingLight = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse + reflectedLight.directSpecular + reflectedLight.indirectSpecular + totalEmissiveRadiance;
 	#include <envmap_fragment>
 	gl_FragColor = vec4( outgoingLight, diffuseColor.a );
+
+	vec4 texColorProj = texCoordProj.q < 0.0 ? vec4(0.0, 0.0, 0.0, 0.0) : texture2DProj( mapProj, texCoordProj); // for projective texturing
+
+	gl_FragColor.xyz += texColorProj.xyz;
+
 	#include <tonemapping_fragment>
 	#include <encodings_fragment>
 	#include <fog_fragment>
@@ -77,6 +88,10 @@ phong.vert = `
 #define PHONG
 #define USE_MAP
 varying vec3 vViewPosition;
+uniform mat4 textureMatrixProj;
+varying vec4 texCoordProj;
+varying vec3 vNormalProj;
+varying vec3 vViewPositionProj;
 #ifndef FLAT_SHADED
 	varying vec3 vNormal;
 #endif
@@ -120,6 +135,10 @@ void main() {
 	#include <envmap_vertex>
 	#include <shadowmap_vertex>
 	#include <fog_vertex>
+	texCoordProj = textureMatrixProj * modelMatrix * vec4(position, 1.0);
+	vNormalProj = normalMatrix * normal;
+	vNormalProj = normalize(vNormalProj);
+	vViewPositionProj = -(modelMatrix * vec4(position, 1.0)).xyz;
 }
 `
 
