@@ -79,6 +79,7 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
 var container, stats;
 var camera, scene, renderer;
 var controls, ambientLight, directionalLight, spotLight, pointLight;
+var miku, stage;
 
 // shadowMap variable
 var SHADOW_MAP_WIDTH = 1024;
@@ -89,11 +90,6 @@ var SCREEN_WIDTH = window.innerWidth;
 var SCREEN_HEIGHT = window.innerHeight;
 var NEAR = 1;
 var FAR = 10000;
-
-var explictFlatShade = false;
-var explictSmoothShade = true;
-var FlatShade = false;
-var SmoothShde = false;
 
 init();
 animate();
@@ -124,7 +120,6 @@ function init() {
   controls.enablePan = true;
 
   // mirror reflector
-<<<<<<< HEAD
   // var verticalMirror = new THREE.Reflector(400, 350, {
   //   clipBias: 0.002,
   //   textureWidth: SCREEN_WIDTH * window.devicePixelRatio,
@@ -136,20 +131,6 @@ function init() {
   // verticalMirror.position.x = -20
   // verticalMirror.position.z = -128
   // scene.add(verticalMirror)
-=======
-  var verticalMirror = new THREE.Reflector(400, 350, {
-    clipBias: 0.001,
-    textureWidth: SCREEN_WIDTH * window.devicePixelRatio,
-    textureHeight: SCREEN_HEIGHT * window.devicePixelRatio,
-    color: 0x889999,
-    recursion: 1
-  });
-  verticalMirror.position.y = 50;
-  verticalMirror.position.x = -20;
-  verticalMirror.position.z = -128;
-  // verticalMirror.rotateX(Math.PI / 2)
-  scene.add(verticalMirror);
->>>>>>> 5306480983badcca36547712d9f7f53c676b039b
 
   // lights
   ambientLight = new THREE.AmbientLight(0xcccccc, 0.4);
@@ -231,41 +212,15 @@ function init() {
       object.traverse(function (node) {
         if (node instanceof THREE.Mesh) {
           node.castShadow = true;
-<<<<<<< HEAD
-          // node.receiveShadow = true;
-=======
-          if (explictSmoothShade) {
-            var geometry = new THREE.Geometry().fromBufferGeometry(node.geometry);
-            geometry.computeFaceNormals();
-            geometry.mergeVertices();
-            geometry.computeVertexNormals(true);
-            node.geometry = new THREE.BufferGeometry().fromGeometry(geometry);
-            node.material = new THREE.MeshPhongMaterial({
-              color: 'white',
-              shading: THREE.SmoothShading
-            });
-          } else if (explictFlatShade) {
-            var geometry = new THREE.Geometry().fromBufferGeometry(node.geometry);
-            console.log(geometry);
-            geometry.computeFaceNormals();
-            geometry.mergeVertices();
-            geometry.computeVertexNormals(true);
-            node.geometry = new THREE.BufferGeometry().fromGeometry(geometry);
-            node.material = new THREE.MeshPhongMaterial({
-              color: 'white',
-              shading: THREE.FlatShading
-            });
-          }
-          if (SmoothShde) node.material.shading = THREE.SmoothShading;else if (FlatShade) mode.material.shading = THREE.FlatShading;
           node.receiveShadow = false;
-          console.log(node);
->>>>>>> 5306480983badcca36547712d9f7f53c676b039b
         }
       });
+      miku = object;
       scene.add(object);
 
       spotLight.target = object;
-      verticalMirror.target = object;
+      // verticalMirror.target = object
+
 
       controls.target.copy(object.position);
       controls.update();
@@ -284,6 +239,7 @@ function init() {
             node.castShadow = true;
           }
         });
+        stage = object;
         scene.add(object);
 
         initGUI();
@@ -299,7 +255,6 @@ function init() {
     });
   });
 
-<<<<<<< HEAD
   // projective texturing
   // window.projLight = new THREE.SpotLight(0xffff00, 3.0, 0.0, false)
   // projLight.position.set(300, 800, 500)
@@ -339,28 +294,6 @@ function init() {
   //     console.error('An error happened')
   //   }
   // )
-=======
-  var objLoader = new THREE.OBJLoader();
-  objLoader.setPath('../models/stage/');
-  objLoader.load('stage.obj', function (object) {
-    object.position.y -= 123.8;
-    object.scale.x = 20;
-    object.scale.y = 20;
-    object.scale.z = 20;
-    object.traverse(function (node) {
-      if (node instanceof THREE.Mesh) {
-        node.castShadow = false;
-        node.receiveShadow = true;
-      }
-    });
-    scene.add(object);
-    // console.log('stage loading')
-  }, xhr => {
-    // console.log(xhr)
-  }, xhr => {
-    console.log(xhr);
-  });
->>>>>>> 5306480983badcca36547712d9f7f53c676b039b
 
   window.addEventListener('resize', onWindowResize, false);
 }
@@ -411,7 +344,40 @@ function initGUI() {
   //   directionalLight.visible = API['show directional light']
   // })
   let gui = new dat.GUI({ width: '300px' });
-  let folder = gui.addFolder("Directional light");
+
+  let folder = gui.addFolder("Miku");
+  let shadingConf = {
+    'shading': 'smooth shading'
+  };
+  folder.add(shadingConf, 'shading', ['smooth shading', 'flat shading']).onChange(value => {
+    miku.traverse(node => {
+      if (node instanceof THREE.Mesh) {
+        if (value == 'flat shading') {
+          if (node.material instanceof THREE.MeshPhongMaterial) {
+            node.material.flatShading = true;
+            node.material.needsUpdate = true;
+          } else {
+            for (let k in node.material) {
+              node.material[k].flatShading = true;
+              node.material[k].needsUpdate = true;
+            }
+          }
+        } else {
+          if (node.material instanceof THREE.MeshPhongMaterial) {
+            node.material.flatShading = false;
+            node.material.needsUpdate = true;
+          } else {
+            for (let k in node.material) {
+              node.material[k].flatShading = false;
+              node.material[k].needsUpdate = true;
+            }
+          }
+        }
+      }
+    });
+  });
+
+  folder = gui.addFolder("Directional light");
   let directionalLightConf = {
     visible: directionalLight.visible,
     color: directionalLight.color.getStyle()

@@ -1,10 +1,11 @@
 // import * as THREE from 'three'
 import projTexShader2 from './shaders/projTexShader2'
-import { debug } from 'util';
+import { debug, inspect } from 'util';
 
 var container, stats
 var camera, scene, renderer
 var controls, ambientLight, directionalLight, spotLight, pointLight
+var miku, stage
 
 // shadowMap variable
 var SHADOW_MAP_WIDTH = 1024
@@ -15,11 +16,6 @@ var SCREEN_WIDTH = window.innerWidth
 var SCREEN_HEIGHT = window.innerHeight
 var NEAR = 1
 var FAR = 10000
-
-var explictFlatShade = false
-var explictSmoothShade = true
-var FlatShade = false
-var SmoothShde = false
 
 init()
 animate()
@@ -142,38 +138,14 @@ function init() {
       object.traverse(function (node) {
         if (node instanceof THREE.Mesh) {
           node.castShadow = true
-          if (explictSmoothShade) {
-            var geometry = new THREE.Geometry().fromBufferGeometry(node.geometry)
-            geometry.computeFaceNormals()
-            geometry.mergeVertices()
-            geometry.computeVertexNormals(true)
-            node.geometry = new THREE.BufferGeometry().fromGeometry(geometry)
-            node.material = new THREE.MeshPhongMaterial({
-              color: 'white',
-              shading: THREE.SmoothShading
-            })
-          } else if (explictFlatShade) {
-            var geometry = new THREE.Geometry().fromBufferGeometry(node.geometry)
-            console.log(geometry)
-            geometry.computeFaceNormals()
-            geometry.mergeVertices()
-            geometry.computeVertexNormals(true)
-            node.geometry = new THREE.BufferGeometry().fromGeometry(geometry)
-            node.material = new THREE.MeshPhongMaterial({
-              color: 'white',
-              shading: THREE.FlatShading
-            })
-          }
-          if (SmoothShde) node.material.shading = THREE.SmoothShading
-          else if (FlatShade) mode.material.shading = THREE.FlatShading
           node.receiveShadow = false
-          console.log(node)
         }
-      });
+      })
+      miku = object
       scene.add(object)
 
       spotLight.target = object
-      verticalMirror.target = object
+      // verticalMirror.target = object
 
 
       controls.target.copy(object.position)
@@ -192,7 +164,8 @@ function init() {
             node.receiveShadow = true;
             node.castShadow = true;
           }
-        });
+        })
+        stage = object
         scene.add(object)
 
         initGUI()
@@ -300,7 +273,41 @@ function initGUI() {
   //   directionalLight.visible = API['show directional light']
   // })
   let gui = new dat.GUI({ width: '300px' })
-  let folder = gui.addFolder("Directional light")
+
+  let folder = gui.addFolder("Miku")
+  let shadingConf = {
+    'shading': 'smooth shading'
+  }
+  folder.add(shadingConf, 'shading', ['smooth shading', 'flat shading'])
+  .onChange((value) => {
+    miku.traverse((node) => {
+      if (node instanceof THREE.Mesh) {
+        if (value == 'flat shading') {
+          if (node.material instanceof THREE.MeshPhongMaterial) {
+            node.material.flatShading = true
+            node.material.needsUpdate = true
+          } else {
+            for (let k in node.material) {
+              node.material[k].flatShading = true
+              node.material[k].needsUpdate = true
+            }
+          }
+        } else {
+          if (node.material instanceof THREE.MeshPhongMaterial) {
+            node.material.flatShading = false
+            node.material.needsUpdate = true
+          } else {
+            for (let k in node.material) {
+              node.material[k].flatShading = false
+              node.material[k].needsUpdate = true
+            }
+          }
+        }
+      }
+    })
+  })
+
+  folder = gui.addFolder("Directional light")
   let directionalLightConf = {
     visible: directionalLight.visible,
     color: directionalLight.color.getStyle()
