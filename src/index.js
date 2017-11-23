@@ -1,11 +1,14 @@
 // import * as THREE from 'three'
 import phong from './shaders/phong.js'
+import { ParticleEngine } from './ParticleEngine/ParticleEngine.js'
+import { Examples } from './ParticleEngine/ParticleEngineExamples.js'
 import { debug, inspect } from 'util';
 
 var container, stats
 var camera, scene, renderer
 var controls, ambientLight, directionalLight, spotLight, pointLight
 var miku, stage
+window.particleEngine = null
 
 // shadowMap variable
 var SHADOW_MAP_WIDTH = 1024
@@ -23,6 +26,7 @@ animate()
 function init() {
   // scene
   scene = new THREE.Scene()
+  scene.background = new THREE.Color( 0x00cc00 )
 
   // canvas
   container = document.createElement('div')
@@ -77,9 +81,9 @@ function init() {
   pointLight.position.set(-25, 0, -10)
   pointLight.castShadow = true
   scene.add(pointLight)
-  // var sphereSize = 1;
-  // var pointLightHelper = new THREE.PointLightHelper( pointLight, sphereSize );
-  // scene.add( pointLightHelper );
+  var sphereSize = 1;
+  var pointLightHelper = new THREE.PointLightHelper( pointLight, sphereSize );
+  scene.add( pointLightHelper );
 
   // spotlight
   spotLight = new THREE.SpotLight(0xffff00, 1)
@@ -256,6 +260,8 @@ function init() {
   box.position.set(0, -50, 0)
   scene.add(box)
 
+  particleSystem('clouds')
+
   window.addEventListener('resize', onWindowResize, false)
 }
 
@@ -265,9 +271,18 @@ function onWindowResize() {
   renderer.setSize(window.innerWidth, window.innerHeight)
 }
 
+var lastTime = null
 function animate(time) {
+  if (!lastTime) {
+    lastTime = time
+  }
   uniforms.time.value = time / 300
   requestAnimationFrame(animate)
+  if (particleEngine) {
+    let delta = time - lastTime
+    particleEngine.update(delta / 1000)
+  }
+  lastTime = time
   render()
 }
 
@@ -389,4 +404,33 @@ function initGUI() {
     spotLight.castShadow = spotLightConf['castShadow']
   })
   // folder.open()
+}
+
+function particleSystem(effectName) {
+  let example = new Examples()
+  let paras = example.getEffect(effectName)
+
+  if (!paras) {
+    console.error('[particle system] no parameters')
+  }
+
+  let path = paras.particleTexturePath
+  let loader = new THREE.TextureLoader()
+  loader.load('../images/smokeparticle.png',
+    (_texture) => {
+      paras.particleTexture = _texture
+      let group = new THREE.Group()
+      particleEngine = new ParticleEngine()
+      particleEngine.setValues(paras)
+      particleEngine.initialize()
+
+      group.add(particleEngine.particleMesh)
+      scene.add(group)
+    },
+    (xhr) => {
+      console.log(xhr.loaded / xhr.total + '% loaded ' + path)
+    },
+    (xhr) => {
+      console.warn('[ParticleEffectsMarker] an error happened while loading ' + path)
+  })
 }

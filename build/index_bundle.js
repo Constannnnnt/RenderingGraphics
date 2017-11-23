@@ -60,7 +60,7 @@
 /******/ 	__webpack_require__.p = "/build";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 0);
+/******/ 	return __webpack_require__(__webpack_require__.s = 1);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -68,11 +68,476 @@
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return ParticleEngine; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "b", function() { return Tween; });
+/* unused harmony export Particle */
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "c", function() { return Type; });
+/**
+* @author Lee Stemkoski   http://www.adelphi.edu/~stemkoski/
+*/
+
+/// /// /// /// /
+// SHADERS //
+/// /// /// /// /
+
+// attribute: data that may be different for each particle (such as size and color)
+//      can only be used in vertex shader
+// varying: used to communicate data from vertex shader to fragment shader
+// uniform: data that is the same for each particle (such as texture)
+
+var particleVertexShader = `
+attribute vec3  customColor;
+attribute float customOpacity;
+attribute float customSize;
+attribute float customAngle;
+attribute float customVisible; // float used as boolean (0 = false, 1 = true)
+varying vec4  vColor;
+varying float vAngle;
+
+void main()
+{
+  if ( customVisible > 0.5 ) { // true
+    vColor = vec4( customColor, customOpacity ); // set color associated to vertex use later in fragment shader.
+  } else { // false
+    vColor = vec4(0.0, 0.0, 0.0, 0.0); // make particle invisible.
+  }
+  vAngle = customAngle;
+
+  vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
+  gl_PointSize = customSize * ( ( 1.0 / 200000.0 ) / length(cameraPosition.xyz - mvPosition.xyz) ); // scale particles as objects in 3D space
+  gl_Position = projectionMatrix * mvPosition;
+}
+`;
+var particleFragmentShader = `
+uniform sampler2D texture;
+varying vec4 vColor;
+varying float vAngle;
+void main()
+{
+  gl_FragColor = vColor;
+
+  float c = cos(vAngle);
+  float s = sin(vAngle);
+  vec2 rotatedUV = vec2(
+    c * (gl_PointCoord.x - 0.5) + s * (gl_PointCoord.y - 0.5) + 0.5,
+    c * (gl_PointCoord.y - 0.5) - s * (gl_PointCoord.x - 0.5) + 0.5
+  );  // rotate UV coordinates to rotate texture
+  vec4 rotatedTexture = texture2D( texture,  rotatedUV );
+  gl_FragColor = gl_FragColor * rotatedTexture;    // sets an otherwise white particle texture to desired color
+}
+`;
+/// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /
+
+/// /// /// /// /// //
+// TWEEN CLASS //
+/// /// /// /// /// //
+
+var Tween = function (timeArray, valueArray) {
+  this.times = timeArray || [];
+  this.values = valueArray || [];
+};
+
+Tween.prototype.constructor = Tween;
+
+Tween.prototype.lerp = function (t) {
+  var i = 0;
+  var n = this.times.length;
+  while (i < n && t > this.times[i]) {
+    i++;
+  }
+  if (i === 0) return this.values[0];
+  if (i === n) return this.values[n - 1];
+  var p = (t - this.times[i - 1]) / (this.times[i] - this.times[i - 1]);
+  if (this.values[0] instanceof THREE.Vector3) {
+    return this.values[i - 1].clone().lerp(this.values[i], p);
+  } else {
+    // its a float
+    return this.values[i - 1] + p * (this.values[i] - this.values[i - 1]);
+  }
+};
+
+Tween.prototype.clone = function () {
+  let ntimes = this.times.slice();
+  let nvalues = this.values.slice();
+  return new this.constructor(ntimes, nvalues);
+};
+
+/// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /
+
+/// /// /// /// /// /// //
+// PARTICLE CLASS //
+/// /// /// /// /// /// //
+
+var Particle = function () {
+  this.position = new THREE.Vector3();
+  this.velocity = new THREE.Vector3(); // units per second
+  this.acceleration = new THREE.Vector3();
+
+  this.angle = 0;
+  this.angleVelocity = 0; // degrees per second
+  this.angleAcceleration = 0; // degrees per second, per second
+
+  this.size = 16.0;
+
+  this.color = new THREE.Color();
+  this.opacity = 1.0;
+
+  this.age = 0;
+  this.alive = 0; // use float instead of boolean for shader purposes
+};
+
+Particle.prototype.constructor = Particle;
+
+Particle.prototype.update = function (dt) {
+  this.position.add(this.velocity.clone().multiplyScalar(dt));
+  this.velocity.add(this.acceleration.clone().multiplyScalar(dt));
+
+  // convert from degrees to radians: 0.01745329251 = Math.PI/180
+  this.angle += this.angleVelocity * 0.01745329251 * dt;
+  this.angleVelocity += this.angleAcceleration * 0.01745329251 * dt;
+
+  this.age += dt;
+
+  // if the tween for a given attribute is nonempty,
+  //  then use it to update the attribute's value
+
+  if (this.sizeTween.times.length > 0) {
+    this.size = this.sizeTween.lerp(this.age);
+  }
+
+  if (this.colorTween.times.length > 0) {
+    var colorHSL = this.colorTween.lerp(this.age);
+    this.color = new THREE.Color().setHSL(colorHSL.x, colorHSL.y, colorHSL.z);
+  }
+
+  if (this.opacityTween.times.length > 0) {
+    this.opacity = this.opacityTween.lerp(this.age);
+  }
+};
+
+/// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /
+
+/// /// /// /// /// /// /// /// ///
+// PARTICLE ENGINE CLASS //
+/// /// /// /// /// /// /// /// ///
+
+var Type = Object.freeze({ 'CUBE': 1, 'SPHERE': 2 });
+
+var ParticleEngine = function () {
+  /// /// /// /// /// /// /// /// /
+  // PARTICLE PROPERTIES //
+  /// /// /// /// /// /// /// /// /
+
+  this.positionStyle = Type.CUBE;
+  this.positionBase = new THREE.Vector3();
+  // cube shape data
+  this.positionSpread = new THREE.Vector3();
+  // sphere shape data
+  this.positionRadius = 0; // distance from base at which particles start
+
+  this.velocityStyle = Type.CUBE;
+  // cube movement data
+  this.velocityBase = new THREE.Vector3();
+  this.velocitySpread = new THREE.Vector3();
+  // sphere movement data
+  //   direction vector calculated using initial position
+  this.speedBase = 0;
+  this.speedSpread = 0;
+
+  this.accelerationBase = new THREE.Vector3();
+  this.accelerationSpread = new THREE.Vector3();
+
+  this.angleBase = 0;
+  this.angleSpread = 0;
+  this.angleVelocityBase = 0;
+  this.angleVelocitySpread = 0;
+  this.angleAccelerationBase = 0;
+  this.angleAccelerationSpread = 0;
+
+  this.sizeBase = 0.0;
+  this.sizeSpread = 0.0;
+  this.sizeTween = new Tween();
+
+  // store colors in HSL format in a THREE.THREE.Vector3 object
+  // http://en.wikipedia.org/wiki/HSL_and_HSV
+  this.colorBase = new THREE.Vector3(0.0, 1.0, 0.5);
+  this.colorSpread = new THREE.Vector3(0.0, 0.0, 0.0);
+  this.colorTween = new Tween();
+
+  this.opacityBase = 1.0;
+  this.opacitySpread = 0.0;
+  this.opacityTween = new Tween();
+
+  this.blendStyle = THREE.NormalBlending; // false
+
+  this.particleArray = [];
+  this.particlesPerSecond = 100;
+  this.particleDeathAge = 1.0;
+
+  /// /// /// /// /// /// /// ///
+  // EMITTER PROPERTIES //
+  /// /// /// /// /// /// /// ///
+
+  this.emitterAge = 0.0;
+  this.emitterAlive = true;
+  this.emitterDeathAge = 60; // time (seconds) at which to stop creating particles.
+
+  // How many particles could be active at any time?
+  this.particleCount = this.particlesPerSecond * Math.min(this.particleDeathAge, this.emitterDeathAge);
+
+  /// /// /// /// //
+  // THREE.JS //
+  /// /// /// /// //
+
+  this.particleGeometry = new THREE.BufferGeometry();
+  this.particleTexture = null;
+  this.particleMaterial = new THREE.ShaderMaterial({
+    uniforms: {
+      texture: { type: 't', value: this.particleTexture }
+    },
+    vertexShader: particleVertexShader,
+    fragmentShader: particleFragmentShader,
+    transparent: true,
+    alphaTest: 0.5,
+    // if having transparency issues, try including: alphaTest: 0.5
+    blending: THREE.NormalBlending,
+    depthTest: true
+  });
+  this.particleMesh = new THREE.Mesh();
+
+  this.lastIndex = -1;
+};
+
+ParticleEngine.prototype.constructor = ParticleEngine;
+
+ParticleEngine.prototype.setValues = function (parameters) {
+  if (parameters === undefined) return;
+
+  // clear any previous tweens that might exist
+  this.sizeTween = new Tween();
+  this.colorTween = new Tween();
+  this.opacityTween = new Tween();
+
+  for (var key in parameters) {
+    this[key] = parameters[key];
+  }
+
+  // calculate/set derived particle engine values
+  this.particleArray = [];
+  this.emitterAge = 0.0;
+  this.emitterAlive = true;
+  this.particleCount = this.particlesPerSecond * Math.min(this.particleDeathAge, this.emitterDeathAge);
+
+  this.particleGeometry = new THREE.BufferGeometry();
+  this.particleMaterial = new THREE.ShaderMaterial({
+    uniforms: {
+      texture: { type: 't', value: parameters.particleTexture }
+    },
+    vertexShader: particleVertexShader,
+    fragmentShader: particleFragmentShader,
+    transparent: true,
+    alphaTest: 0.5,
+    // if having transparency issues, try including: alphaTest: 0.5,
+    blending: THREE.NormalBlending,
+    depthTest: true
+  });
+  this.particleMesh = new THREE.Points();
+};
+
+// helper functions for randomization
+ParticleEngine.prototype.randomValue = function (base, spread) {
+  return base + spread * (Math.random() - 0.5);
+};
+ParticleEngine.prototype.randomVector3 = function (base, spread) {
+  var rand3 = new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5);
+  return new THREE.Vector3().addVectors(base, new THREE.Vector3().multiplyVectors(spread, rand3));
+};
+
+ParticleEngine.prototype.createParticle = function () {
+  var particle = new Particle();
+
+  particle.sizeTween = this.sizeTween;
+  particle.colorTween = this.colorTween;
+  particle.opacityTween = this.opacityTween;
+
+  if (this.positionStyle === Type.CUBE) {
+    particle.position = this.randomVector3(this.positionBase, this.positionSpread);
+  }
+  if (this.positionStyle === Type.SPHERE) {
+    var z = 2 * Math.random() - 1;
+    var t = 6.2832 * Math.random();
+    var r = Math.sqrt(1 - z * z);
+    var vec3 = new THREE.Vector3(r * Math.cos(t), r * Math.sin(t), z);
+    particle.position = new THREE.Vector3().addVectors(this.positionBase, vec3.multiplyScalar(this.positionRadius));
+  }
+
+  if (this.velocityStyle === Type.CUBE) {
+    particle.velocity = this.randomVector3(this.velocityBase, this.velocitySpread);
+  }
+  if (this.velocityStyle === Type.SPHERE) {
+    var direction = new THREE.Vector3().subVectors(particle.position, this.positionBase);
+    var speed = this.randomValue(this.speedBase, this.speedSpread);
+    particle.velocity = direction.normalize().multiplyScalar(speed);
+  }
+
+  particle.acceleration = this.randomVector3(this.accelerationBase, this.accelerationSpread);
+
+  particle.angle = this.randomValue(this.angleBase, this.angleSpread);
+  particle.angleVelocity = this.randomValue(this.angleVelocityBase, this.angleVelocitySpread);
+  particle.angleAcceleration = this.randomValue(this.angleAccelerationBase, this.angleAccelerationSpread);
+
+  particle.size = this.randomValue(this.sizeBase, this.sizeSpread);
+
+  var color = this.randomVector3(this.colorBase, this.colorSpread);
+  particle.color = new THREE.Color().setHSL(color.x, color.y, color.z);
+
+  particle.opacity = this.randomValue(this.opacityBase, this.opacitySpread);
+
+  particle.age = 0;
+  particle.alive = 0; // particles initialize as inactive
+  // console.log('[ParticleEngine] createParticle', particle)
+  return particle;
+};
+
+ParticleEngine.prototype.initialize = function () {
+  // link particle data with geometry/material data
+  let geovertices = [];
+  let geocustomvisible = [];
+  let geocustomcolor = [];
+  let geocustomopacity = [];
+  let geocustomsize = [];
+  let geocustomangle = [];
+  for (var i = 0; i < this.particleCount; i++) {
+    // remove duplicate code somehow, here and in update function below.
+    this.particleArray[i] = this.createParticle();
+    geovertices = geovertices.concat([this.particleArray[i].position.x, this.particleArray[i].position.y, this.particleArray[i].position.z]);
+    geocustomvisible.push(this.particleArray[i].alive);
+    geocustomcolor = geocustomcolor.concat([this.particleArray[i].color.r, this.particleArray[i].color.g, this.particleArray[i].color.b]);
+    geocustomopacity.push(this.particleArray[i].opacity);
+    geocustomsize.push(this.particleArray[i].size);
+    geocustomangle.push(this.particleArray[i].angle);
+  }
+  this.particleGeometry.addAttribute('position', new THREE.BufferAttribute(new Float32Array(geovertices), 3));
+  this.particleGeometry.addAttribute('customVisible', new THREE.BufferAttribute(new Float32Array(geocustomvisible), 1));
+  this.particleGeometry.addAttribute('customColor', new THREE.BufferAttribute(new Float32Array(geocustomcolor), 3));
+  this.particleGeometry.addAttribute('customOpacity', new THREE.BufferAttribute(new Float32Array(geocustomopacity), 1));
+  this.particleGeometry.addAttribute('customSize', new THREE.BufferAttribute(new Float32Array(geocustomsize), 1));
+  this.particleGeometry.addAttribute('customAngle', new THREE.BufferAttribute(new Float32Array(geocustomangle), 1));
+
+  this.particleMaterial.blending = this.blendStyle;
+  this.particleMaterial.depthWrite = false;
+  // if (this.blendStyle !== NormalBlending) {
+  //   this.particleMaterial.depthWrite = false
+  // }
+
+  this.particleMesh = new THREE.Points(this.particleGeometry, this.particleMaterial);
+  this.particleMesh.dynamic = true;
+  this.particleMesh.sortParticles = true;
+  // scene.add(this.particleMesh)
+};
+
+ParticleEngine.prototype.update = function (dt) {
+  // determine indices of particles to activate
+  if (this.lastIndex === -1) this.lastIndex = Math.floor(this.particlesPerSecond * (this.emitterAge + 0));
+  if (this.lastIndex < this.particleCount) {
+    var endIndex = Math.floor(this.particlesPerSecond * (this.emitterAge + dt));
+    if (endIndex > this.particleCount) endIndex = this.particleCount;
+    for (let i = this.lastIndex; i < endIndex; ++i) {
+      this.particleArray[i].alive = 1.0;
+    }
+    this.lastIndex = endIndex;
+  }
+
+  var recycleIndices = [];
+
+  // update particle data
+  for (var i = 0; i < this.particleCount; i++) {
+    if (this.particleArray[i].alive === 1.0) {
+      this.particleArray[i].update(dt);
+
+      // check if particle should expire
+      // could also use: death by size<0 or alpha<0.
+      if (this.particleArray[i].age > this.particleDeathAge) {
+        this.particleArray[i].alive = 0.0;
+        recycleIndices.push(i);
+      }
+      // update particle properties in shader
+      this.particleGeometry.attributes.position.array[i * 3] = this.particleArray[i].position.x;
+      this.particleGeometry.attributes.position.array[i * 3 + 1] = this.particleArray[i].position.y;
+      this.particleGeometry.attributes.position.array[i * 3 + 2] = this.particleArray[i].position.z;
+
+      this.particleGeometry.attributes.customVisible.array[i] = this.particleArray[i].alive;
+      this.particleGeometry.attributes.customColor.array[i * 3] = this.particleArray[i].color.r;
+      this.particleGeometry.attributes.customColor.array[i * 3 + 1] = this.particleArray[i].color.g;
+      this.particleGeometry.attributes.customColor.array[i * 3 + 2] = this.particleArray[i].color.b;
+      this.particleGeometry.attributes.customOpacity.array[i] = this.particleArray[i].opacity;
+      this.particleGeometry.attributes.customSize.array[i] = this.particleArray[i].size;
+      this.particleGeometry.attributes.customAngle.array[i] = this.particleArray[i].angle;
+    }
+  }
+
+  this.particleGeometry.attributes.position.needsUpdate = true;
+  this.particleGeometry.attributes.customVisible.needsUpdate = true;
+  this.particleGeometry.attributes.customColor.needsUpdate = true;
+  this.particleGeometry.attributes.customOpacity.needsUpdate = true;
+  this.particleGeometry.attributes.customSize.needsUpdate = true;
+  this.particleGeometry.attributes.customAngle.needsUpdate = true;
+
+  // check if particle emitter is still running
+  if (!this.emitterAlive) return;
+
+  // if any particles have died while the emitter is still running, we imediately recycle them
+  for (var j = 0; j < recycleIndices.length; j++) {
+    let i = recycleIndices[j];
+    this.particleArray[i] = this.createParticle();
+    this.particleArray[i].alive = 1.0; // activate right away
+    this.particleArray[i].update(dt);
+    this.particleGeometry.attributes.position.array[i * 3] = this.particleArray[i].position.x;
+    this.particleGeometry.attributes.position.array[i * 3 + 1] = this.particleArray[i].position.y;
+    this.particleGeometry.attributes.position.array[i * 3 + 2] = this.particleArray[i].position.z;
+
+    this.particleGeometry.attributes.customVisible.array[i] = this.particleArray[i].alive;
+    this.particleGeometry.attributes.customColor.array[i * 3] = this.particleArray[i].color.r;
+    this.particleGeometry.attributes.customColor.array[i * 3 + 1] = this.particleArray[i].color.g;
+    this.particleGeometry.attributes.customColor.array[i * 3 + 2] = this.particleArray[i].color.b;
+    this.particleGeometry.attributes.customOpacity.array[i] = this.particleArray[i].opacity;
+    this.particleGeometry.attributes.customSize.array[i] = this.particleArray[i].size;
+    this.particleGeometry.attributes.customAngle.array[i] = this.particleArray[i].angle;
+  }
+
+  this.particleGeometry.attributes.position.needsUpdate = true;
+  this.particleGeometry.attributes.customVisible.needsUpdate = true;
+  this.particleGeometry.attributes.customColor.needsUpdate = true;
+  this.particleGeometry.attributes.customOpacity.needsUpdate = true;
+  this.particleGeometry.attributes.customSize.needsUpdate = true;
+  this.particleGeometry.attributes.customAngle.needsUpdate = true;
+
+  // stop emitter?
+  this.emitterAge += dt;
+  if (this.emitterAge > this.emitterDeathAge) this.emitterAlive = false;
+};
+
+ParticleEngine.prototype.destroy = function () {}
+// scene.remove(this.particleMesh)
+
+/// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /// /
+
+;
+
+/***/ }),
+/* 1 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
 Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__shaders_phong_js__ = __webpack_require__(1);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_util__ = __webpack_require__(2);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_util___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_1_util__);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__shaders_phong_js__ = __webpack_require__(2);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__ParticleEngine_ParticleEngine_js__ = __webpack_require__(0);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__ParticleEngine_ParticleEngineExamples_js__ = __webpack_require__(3);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_3_util__ = __webpack_require__(4);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_3_util___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_3_util__);
 // import * as THREE from 'three'
+
+
 
 
 
@@ -80,6 +545,7 @@ var container, stats;
 var camera, scene, renderer;
 var controls, ambientLight, directionalLight, spotLight, pointLight;
 var miku, stage;
+window.particleEngine = null;
 
 // shadowMap variable
 var SHADOW_MAP_WIDTH = 1024;
@@ -97,6 +563,7 @@ animate();
 function init() {
   // scene
   scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x00cc00);
 
   // canvas
   container = document.createElement('div');
@@ -151,9 +618,9 @@ function init() {
   pointLight.position.set(-25, 0, -10);
   pointLight.castShadow = true;
   scene.add(pointLight);
-  // var sphereSize = 1;
-  // var pointLightHelper = new THREE.PointLightHelper( pointLight, sphereSize );
-  // scene.add( pointLightHelper );
+  var sphereSize = 1;
+  var pointLightHelper = new THREE.PointLightHelper(pointLight, sphereSize);
+  scene.add(pointLightHelper);
 
   // spotlight
   spotLight = new THREE.SpotLight(0xffff00, 1);
@@ -325,6 +792,8 @@ function init() {
   box.position.set(0, -50, 0);
   scene.add(box);
 
+  particleSystem('clouds');
+
   window.addEventListener('resize', onWindowResize, false);
 }
 
@@ -334,9 +803,18 @@ function onWindowResize() {
   renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
+var lastTime = null;
 function animate(time) {
+  if (!lastTime) {
+    lastTime = time;
+  }
   uniforms.time.value = time / 300;
   requestAnimationFrame(animate);
+  if (particleEngine) {
+    let delta = time - lastTime;
+    particleEngine.update(delta / 1000);
+  }
+  lastTime = time;
   render();
 }
 
@@ -456,8 +934,34 @@ function initGUI() {
   // folder.open()
 }
 
+function particleSystem(effectName) {
+  let example = new __WEBPACK_IMPORTED_MODULE_2__ParticleEngine_ParticleEngineExamples_js__["a" /* Examples */]();
+  let paras = example.getEffect(effectName);
+
+  if (!paras) {
+    console.error('[particle system] no parameters');
+  }
+
+  let path = paras.particleTexturePath;
+  let loader = new THREE.TextureLoader();
+  loader.load('../images/smokeparticle.png', _texture => {
+    paras.particleTexture = _texture;
+    let group = new THREE.Group();
+    particleEngine = new __WEBPACK_IMPORTED_MODULE_1__ParticleEngine_ParticleEngine_js__["a" /* ParticleEngine */]();
+    particleEngine.setValues(paras);
+    particleEngine.initialize();
+
+    group.add(particleEngine.particleMesh);
+    scene.add(group);
+  }, xhr => {
+    console.log(xhr.loaded / xhr.total + '% loaded ' + path);
+  }, xhr => {
+    console.warn('[ParticleEffectsMarker] an error happened while loading ' + path);
+  });
+}
+
 /***/ }),
-/* 1 */
+/* 2 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -589,7 +1093,421 @@ void main() {
 /* harmony default export */ __webpack_exports__["a"] = (phong);
 
 /***/ }),
-/* 2 */
+/* 3 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return Examples; });
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__ParticleEngine_js__ = __webpack_require__(0);
+
+/**
+* @author Lee Stemkoski   http://www.adelphi.edu/~stemkoski/
+*/
+
+/*
+  Particle Engine options:
+
+  positionBase   : new THREE.THREE.Vector3(),
+  positionStyle : Type.CUBE or Type.SPHERE,
+
+  // for Type.CUBE
+  positionSpread  : new THREE.THREE.Vector3(),
+
+  // for Type.SPHERE
+  positionRadius  : 10,
+
+  velocityStyle : Type.CUBE or Type.SPHERE,
+
+  // for Type.CUBE
+  velocityBase       : new THREE.THREE.Vector3(),
+  velocitySpread     : new THREE.THREE.Vector3(),
+
+  // for Type.SPHERE
+  speedBase   : 20,
+  speedSpread : 10,
+
+  accelerationBase   : new THREE.THREE.Vector3(),
+  accelerationSpread : new THREE.THREE.Vector3(),
+
+  particleTexture : THREE.ImageUtils.loadTexture( 'images/star.png' ),
+
+  // rotation of image used for particles
+  angleBase               : 0,
+  angleSpread             : 0,
+  angleVelocityBase       : 0,
+  angleVelocitySpread     : 0,
+  angleAccelerationBase   : 0,
+  angleAccelerationSpread : 0,
+
+  // size, color, opacity
+  //   for static  values, use base/spread
+  //   for dynamic values, use Tween
+  //   (non-empty Tween takes precedence)
+  sizeBase   : 20.0,
+  sizeSpread : 5.0,
+  sizeTween  : new Tween( [0, 1], [1, 20] ),
+
+  // colors stored in THREE.Vector3 in H,S,L format
+  colorBase   : new THREE.THREE.Vector3(0.0, 1.0, 0.5),
+  colorSpread : new THREE.THREE.Vector3(0,0,0),
+  colorTween  : new Tween( [0.5, 2], [ new THREE.THREE.Vector3(0, 1, 0.5), new THREE.THREE.Vector3(1, 1, 0.5) ] ),
+
+  opacityBase   : 1,
+  opacitySpread : 0,
+  opacityTween  : new Tween( [2, 3], [1, 0] ),
+
+  blendStyle    : THREE.NormalBlending (default), THREE.AdditiveBlending
+
+  particlesPerSecond : 200,
+  particleDeathAge   : 2.0,
+  emitterDeathAge    : 60
+*/
+
+/*
+var initExamples = {
+  // Not just any fountain -- a RAINBOW STAR FOUNTAIN of AWESOMENESS
+  fountain:
+  {
+    positionStyle: Type.CUBE,
+    positionBase: new THREE.Vector3(0, 5, 0),
+    positionSpread: new THREE.Vector3(10, 0, 10),
+
+    velocityStyle: Type.CUBE,
+    velocityBase: new THREE.Vector3(0, 160, 0),
+    velocitySpread: new THREE.Vector3(100, 20, 100),
+
+    accelerationBase: new THREE.Vector3(0, -100, 0),
+
+    particleTexture: null,
+    particleTexturePath: '../images/star.png',
+
+    angleBase: 0,
+    angleSpread: 180,
+    angleVelocityBase: 0,
+    angleVelocitySpread: 360 * 4,
+
+    sizeTween: new Tween([0, 1], [1, 20]),
+    opacityTween: new Tween([2, 3], [1, 0]),
+    colorTween: new Tween([0.5, 2], [new THREE.Vector3(0, 1, 0.5), new THREE.Vector3(0.8, 1, 0.5)]),
+
+    particlesPerSecond: 200,
+    particleDeathAge: 3.0,
+    emitterDeathAge: 60
+  },
+
+  fireball:
+  {
+    positionStyle: Type.SPHERE,
+    positionBase: new THREE.Vector3(0, 50, 0),
+    positionRadius: 2,
+
+    velocityStyle: Type.SPHERE,
+    speedBase: 40,
+    speedSpread: 8,
+
+    particleTexture: null,
+    particleTexturePath: '../images/smokeparticle.png',
+
+    sizeTween: new Tween([0, 0.1], [1, 150]),
+    opacityTween: new Tween([0.7, 1], [1, 0]),
+    colorBase: new Vector3(0.02, 1, 0.4),
+    blendStyle: AdditiveBlending,
+
+    particlesPerSecond: 60,
+    particleDeathAge: 1.5,
+    emitterDeathAge: 60
+  },
+
+  starfield:
+  {
+    positionStyle: Type.CUBE,
+    positionBase: new Vector3(0, 200, 0),
+    positionSpread: new Vector3(600, 400, 600),
+
+    velocityStyle: Type.CUBE,
+    velocityBase: new Vector3(0, 0, 0),
+    velocitySpread: new Vector3(0.5, 0.5, 0.5),
+
+    angleBase: 0,
+    angleSpread: 720,
+    angleVelocityBase: 0,
+    angleVelocitySpread: 4,
+
+    particleTexture: null,
+    particleTexturePath: '../images/spikey.png',
+
+    sizeBase: 10.0,
+    sizeSpread: 2.0,
+    colorBase: new Vector3(0.15, 1.0, 0.9), // H,S,L
+    colorSpread: new Vector3(0.00, 0.0, 0.2),
+    opacityBase: 1,
+
+    particlesPerSecond: 20000,
+    particleDeathAge: 60.0,
+    emitterDeathAge: 0.1
+  },
+
+  fireflies:
+  {
+    positionStyle: Type.CUBE,
+    positionBase: new Vector3(0, 100, 0),
+    positionSpread: new Vector3(400, 200, 400),
+
+    velocityStyle: Type.CUBE,
+    velocityBase: new Vector3(0, 0, 0),
+    velocitySpread: new Vector3(60, 20, 60),
+
+    particleTexture: null,
+    particleTexturePath: '../images/spark.png',
+
+    sizeBase: 30.0,
+    sizeSpread: 2.0,
+    opacityTween: new Tween([0.0, 1.0, 1.1, 2.0, 2.1, 3.0, 3.1, 4.0, 4.1, 5.0, 5.1, 6.0, 6.1],
+      [0.2, 0.2, 1.0, 1.0, 0.2, 0.2, 1.0, 1.0, 0.2, 0.2, 1.0, 1.0, 0.2]),
+    colorBase: new Vector3(0.30, 1.0, 0.6), // H,S,L
+    colorSpread: new Vector3(0.3, 0.0, 0.0),
+
+    particlesPerSecond: 20,
+    particleDeathAge: 6.1,
+    emitterDeathAge: 600
+  },
+
+  startunnel:
+  {
+    positionStyle: Type.CUBE,
+    positionBase: new Vector3(0, 0, 0),
+    positionSpread: new Vector3(10, 10, 10),
+
+    velocityStyle: Type.CUBE,
+    velocityBase: new Vector3(0, 100, 200),
+    velocitySpread: new Vector3(40, 40, 80),
+
+    angleBase: 0,
+    angleSpread: 720,
+    angleVelocityBase: 10,
+    angleVelocitySpread: 0,
+
+    particleTexture: null,
+    particleTexturePath: '../images/spikey.png',
+
+    sizeBase: 4.0,
+    sizeSpread: 2.0,
+    colorBase: new Vector3(0.15, 1.0, 0.8), // H,S,L
+    opacityBase: 1,
+    blendStyle: AdditiveBlending,
+
+    particlesPerSecond: 500,
+    particleDeathAge: 4.0,
+    emitterDeathAge: 60
+  },
+
+  firework:
+  {
+    positionStyle: Type.SPHERE,
+    positionBase: new Vector3(0, 100, 0),
+    positionRadius: 10,
+
+    velocityStyle: Type.SPHERE,
+    speedBase: 90,
+    speedSpread: 10,
+
+    accelerationBase: new Vector3(0, -80, 0),
+
+    particleTexture: null,
+    particleTexturePath: '../images/spark.png',
+
+    sizeTween: new Tween([0.5, 0.7, 1.3], [5, 40, 1]),
+    opacityTween: new Tween([0.2, 0.7, 2.5], [0.75, 1, 0]),
+    colorTween: new Tween([0.4, 0.8, 1.0], [new Vector3(0, 1, 1), new Vector3(0, 1, 0.6), new Vector3(0.8, 1, 0.6)]),
+    blendStyle: AdditiveBlending,
+
+    particlesPerSecond: 3000,
+    particleDeathAge: 2.5,
+    emitterDeathAge: 0.2
+  }
+} */
+
+var examples = {
+  // parameters above remain the same, to be modified
+  // effects below are modified for examples in earth. exmaples/qh-8-add-particles/debug.html
+  smoke: {
+    positionStyle: __WEBPACK_IMPORTED_MODULE_0__ParticleEngine_js__["c" /* Type */].CUBE,
+    positionBase: new THREE.Vector3(0, 0, 0),
+    positionSpread: new THREE.Vector3(2, 2, 0),
+
+    velocityStyle: __WEBPACK_IMPORTED_MODULE_0__ParticleEngine_js__["c" /* Type */].CUBE,
+    velocityBase: new THREE.Vector3(0, 0, 10),
+    velocitySpread: new THREE.Vector3(5, 5, 5),
+    accelerationBase: new THREE.Vector3(0, 0, -1),
+
+    particleTexture: null,
+    particleTexturePath: '../images/smokeparticle.png',
+
+    angleBase: 0,
+    angleSpread: 720,
+    angleVelocityBase: 0,
+    angleVelocitySpread: 720,
+
+    sizeTween: new __WEBPACK_IMPORTED_MODULE_0__ParticleEngine_js__["b" /* Tween */]([0, 1], [32, 128]),
+    opacityTween: new __WEBPACK_IMPORTED_MODULE_0__ParticleEngine_js__["b" /* Tween */]([0.8, 2], [0.5, 0]),
+    colorTween: new __WEBPACK_IMPORTED_MODULE_0__ParticleEngine_js__["b" /* Tween */]([0.4, 1], [new THREE.Vector3(0, 0, 0.2), new THREE.Vector3(0, 0, 0.5)]),
+
+    particlesPerSecond: 400,
+    particleDeathAge: 2.0,
+    emitterDeathAge: 60
+  },
+
+  clouds: {
+    positionStyle: __WEBPACK_IMPORTED_MODULE_0__ParticleEngine_js__["c" /* Type */].CUBE,
+    positionBase: new THREE.Vector3(0, 0, 0),
+    positionSpread: new THREE.Vector3(200, 200, 10),
+
+    velocityStyle: __WEBPACK_IMPORTED_MODULE_0__ParticleEngine_js__["c" /* Type */].CUBE,
+    velocityBase: new THREE.Vector3(0.4, 0, 0),
+    velocitySpread: new THREE.Vector3(0.2, 0, 0),
+
+    particleTexture: null,
+    particleTexturePath: '../../images/smokeparticle.png',
+
+    sizeBase: 40.0,
+    sizeSpread: 40.0,
+    colorBase: new THREE.Vector3(0.0, 0.0, 1.0), // H,S,L
+    opacityTween: new __WEBPACK_IMPORTED_MODULE_0__ParticleEngine_js__["b" /* Tween */]([0, 1, 4, 5], [0, 1, 1, 0]),
+
+    particlesPerSecond: 20,
+    particleDeathAge: 4.0,
+    emitterDeathAge: 60
+  },
+
+  snow: {
+    positionStyle: __WEBPACK_IMPORTED_MODULE_0__ParticleEngine_js__["c" /* Type */].CUBE,
+    positionBase: new THREE.Vector3(0, 0, 0),
+    positionSpread: new THREE.Vector3(5, 5, 0),
+
+    velocityStyle: __WEBPACK_IMPORTED_MODULE_0__ParticleEngine_js__["c" /* Type */].CUBE,
+    velocityBase: new THREE.Vector3(0, 0, -1),
+    velocitySpread: new THREE.Vector3(1, 1, 0.5),
+    accelerationBase: new THREE.Vector3(0, 0, -0.5),
+
+    angleBase: 0,
+    angleSpread: 720,
+    angleVelocityBase: 0,
+    angleVelocitySpread: 60,
+
+    particleTexture: null,
+    particleTexturePath: '../images/snowflake.png',
+
+    sizeTween: new __WEBPACK_IMPORTED_MODULE_0__ParticleEngine_js__["b" /* Tween */]([0, 0.25], [40, 80]),
+    colorBase: new THREE.Vector3(0.66, 1.0, 0.9), // H,S,L
+    opacityTween: new __WEBPACK_IMPORTED_MODULE_0__ParticleEngine_js__["b" /* Tween */]([2, 3], [0.8, 0]),
+
+    particlesPerSecond: 20,
+    particleDeathAge: 4.0,
+    emitterDeathAge: 60
+  },
+
+  rain: {
+    positionStyle: __WEBPACK_IMPORTED_MODULE_0__ParticleEngine_js__["c" /* Type */].CUBE,
+    positionBase: new THREE.Vector3(0, 0, 0),
+    positionSpread: new THREE.Vector3(5, 5, 0),
+
+    velocityStyle: __WEBPACK_IMPORTED_MODULE_0__ParticleEngine_js__["c" /* Type */].CUBE,
+    velocityBase: new THREE.Vector3(0, 0, -3),
+    velocitySpread: new THREE.Vector3(1, 1, 2),
+    accelerationBase: new THREE.Vector3(0, 0, -2),
+
+    particleTexture: null,
+    particleTexturePath: '../images/raindrop2flip.png',
+
+    sizeBase: 60.0,
+    sizeSpread: 30.0,
+    colorBase: new THREE.Vector3(0.67, 1.0, 0.4), // H,S,L
+    colorSpread: new THREE.Vector3(0.00, 0.0, 0.2),
+    opacityBase: 0.6,
+
+    particlesPerSecond: 40,
+    particleDeathAge: 1.5,
+    emitterDeathAge: 60
+  },
+
+  candle: {
+    positionStyle: __WEBPACK_IMPORTED_MODULE_0__ParticleEngine_js__["c" /* Type */].SPHERE,
+    positionBase: new THREE.Vector3(0, 0, 0),
+    positionRadius: 1,
+
+    velocityStyle: __WEBPACK_IMPORTED_MODULE_0__ParticleEngine_js__["c" /* Type */].CUBE,
+    velocityBase: new THREE.Vector3(0, 0, 7),
+    velocitySpread: new THREE.Vector3(2, 2, 0),
+
+    particleTexture: null,
+    particleTexturePath: '../images/smokeparticle.png',
+
+    sizeTween: new __WEBPACK_IMPORTED_MODULE_0__ParticleEngine_js__["b" /* Tween */]([0, 0.3, 1.2], [20, 150, 1]),
+    opacityTween: new __WEBPACK_IMPORTED_MODULE_0__ParticleEngine_js__["b" /* Tween */]([0.9, 1.5], [1, 0]),
+    colorTween: new __WEBPACK_IMPORTED_MODULE_0__ParticleEngine_js__["b" /* Tween */]([0.5, 1.0], [new THREE.Vector3(0.02, 1, 0.5), new THREE.Vector3(0.05, 1, 0)]),
+    blendStyle: THREE.AdditiveBlending,
+
+    particlesPerSecond: 600,
+    particleDeathAge: 12,
+    emitterDeathAge: 60
+  }
+
+};
+
+function cloneExamples(examples) {
+  let dst = {};
+  for (let key in examples) {
+    dst[key] = {};
+    for (let u in examples[key]) {
+      if (examples[key][u] instanceof THREE.Vector3) {
+        dst[key][u] = examples[key][u].clone();
+      } else if (examples[key][u] instanceof __WEBPACK_IMPORTED_MODULE_0__ParticleEngine_js__["b" /* Tween */]) {
+        dst[key][u] = examples[key][u].clone();
+      } else if (examples[key][u] instanceof Array) {
+        dst[key][u] = examples[key][u].slice();
+      } else if (examples[key][u] instanceof String) {
+        dst[key][u] = examples[key][u];
+      } else if (examples[key][u] instanceof Number) {
+        dst[key][u] = examples[key][u];
+      } else {
+        dst[key][u] = examples[key][u];
+      }
+    }
+  }
+  return dst;
+}
+
+class Examples {
+  constructor() {
+    this.examples = cloneExamples(examples);
+  }
+
+  exist(effect) {
+    if (this.examples[effect]) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  getEffect(effect) {
+    return this.examples[effect];
+  }
+
+  destruct() {
+    for (let key in this.examples) {
+      if (this.examples[key].particleTexture) {
+        this.examples[key].particleTexture.dispose();
+        this.examples[key].particleTexture = null;
+      }
+    }
+  }
+}
+
+
+
+/***/ }),
+/* 4 */
 /***/ (function(module, exports, __webpack_require__) {
 
 /* WEBPACK VAR INJECTION */(function(global, process) {// Copyright Joyent, Inc. and other Node contributors.
@@ -1117,7 +2035,7 @@ function isPrimitive(arg) {
 }
 exports.isPrimitive = isPrimitive;
 
-exports.isBuffer = __webpack_require__(5);
+exports.isBuffer = __webpack_require__(7);
 
 function objectToString(o) {
   return Object.prototype.toString.call(o);
@@ -1161,7 +2079,7 @@ exports.log = function() {
  *     prototype.
  * @param {function} superCtor Constructor function to inherit prototype from.
  */
-exports.inherits = __webpack_require__(6);
+exports.inherits = __webpack_require__(8);
 
 exports._extend = function(origin, add) {
   // Don't do anything if add isn't an object
@@ -1179,10 +2097,10 @@ function hasOwnProperty(obj, prop) {
   return Object.prototype.hasOwnProperty.call(obj, prop);
 }
 
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(3), __webpack_require__(4)))
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(5), __webpack_require__(6)))
 
 /***/ }),
-/* 3 */
+/* 5 */
 /***/ (function(module, exports) {
 
 var g;
@@ -1209,7 +2127,7 @@ module.exports = g;
 
 
 /***/ }),
-/* 4 */
+/* 6 */
 /***/ (function(module, exports) {
 
 // shim for using process in browser
@@ -1399,7 +2317,7 @@ process.umask = function() { return 0; };
 
 
 /***/ }),
-/* 5 */
+/* 7 */
 /***/ (function(module, exports) {
 
 module.exports = function isBuffer(arg) {
@@ -1410,7 +2328,7 @@ module.exports = function isBuffer(arg) {
 }
 
 /***/ }),
-/* 6 */
+/* 8 */
 /***/ (function(module, exports) {
 
 if (typeof Object.create === 'function') {
