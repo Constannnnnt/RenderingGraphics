@@ -1,21 +1,17 @@
 // import * as THREE from 'three'
 import phong from './shaders/phong.js'
-import {
-  ParticleEngine
-} from './ParticleEngine/ParticleEngine.js'
-import {
-  Examples
-} from './ParticleEngine/ParticleEngineExamples.js'
-import {
-  debug,
-  inspect
-} from 'util';
 
+import depthShader from './shaders/depth.js'
+import { ParticleEngine } from './ParticleEngine/ParticleEngine.js'
+import { Examples } from './ParticleEngine/ParticleEngineExamples.js'
+import { debug, inspect } from 'util';
 var container, stats
 var camera, scene, renderer
 var controls, ambientLight, directionalLight, spotLight
 var pointLight, planeuniform, verticalMirror, spotLight2
+
 var miku, stage
+var depthTarget, postCamera, postScene, renderDepthFlag = false, depthuniform
 window.particleEngine = null
 var spotlightHelper2, spotLightHelper, pointLightHelper
 
@@ -27,7 +23,7 @@ var SHADOW_MAP_HEIGHT = 1024
 var SCREEN_WIDTH = window.innerWidth
 var SCREEN_HEIGHT = window.innerHeight
 var NEAR = 1
-var FAR = 10000
+var FAR = 1000
 
 init()
 animate()
@@ -58,6 +54,7 @@ function init() {
   controls.minDistance = 10
   controls.maxDistance = 800
   controls.enablePan = true
+  controls.update()
 
   // lights
   ambientLight = new THREE.AmbientLight(0xcccccc, 0.4)
@@ -79,8 +76,10 @@ function init() {
   pointLight.castShadow = true
   scene.add(pointLight)
   var sphereSize = 1;
+
   pointLightHelper = new THREE.PointLightHelper(pointLight, sphereSize);
   pointLightHelper.visible = false
+
   scene.add(pointLightHelper);
 
   // spotlight
@@ -149,7 +148,7 @@ function init() {
 
       // verticalMirror.target = object
       spotLight.target = object
-      scene.add(spotLight.target)
+      object.updateMatrixWorld()
 
       controls.target.copy(object.position)
       controls.update()
@@ -294,6 +293,8 @@ function init() {
   scene.add(spotlightHelper2)
   plane.material.uniforms.textureMatrixProj.value = makeProjectiveMatrixForLight(spotLight2)
 
+  initDepth()
+
   window.addEventListener('resize', onWindowResize, false)
 
   //mirror reflector
@@ -333,10 +334,15 @@ function animate(time) {
   }
   lastTime = time
   render()
+  if (renderDepthFlag) { renderer.render(postScene, postCamera) }
 }
 
 function render() {
-  renderer.render(scene, camera)
+  if (renderDepthFlag) {
+    renderer.render(scene, camera, depthTarget)
+  } else {
+    renderer.render(scene, camera)
+  }
 }
 
 function makeProjectiveMatrixForLight(l) {
@@ -549,6 +555,44 @@ function initGUI() {
     pointLightHelper.visible = value
   })
   // folder.open()
+
+  folder = gui.addFolder("Projective texturing")
+  let projectiveConf = {
+    showMapTexture: planeuniform.showMapTexture.value,
+    blendingParam: planeuniform.blendingParam.value
+  }
+  folder.add(projectiveConf, 'showMapTexture').onChange((v) => {
+    planeuniform.showMapTexture.value = v
+  })
+  folder.add(projectiveConf, 'blendingParam').min(0.0).max(1.0).step(0.1)
+    .onChange((v) => {
+      planeuniform.blendingParam.value = v
+    })
+
+  folder = gui.addFolder("Depth Buffer")
+  let depthConf = {
+    'render depth': renderDepthFlag,
+    'camera near': depthuniform.cameraNear.value,
+    'camera far': depthuniform.cameraFar.value
+  }
+  folder.add(depthConf, 'render depth').onChange((v) => {
+    renderDepthFlag = v
+    if (v === false) {
+      camera.near = NEAR
+      camera.far = FAR
+      camera.updateProjectionMatrix()
+    }
+  })
+  folder.add(depthConf, 'camera near').min(1).max(100).step(1.0)
+    .onChange((v) => {
+      camera.near = v
+      camera.updateProjectionMatrix()
+    })
+  folder.add(depthConf, 'camera far').min(500).max(FAR).step(1.0)
+    .onChange((v) => {
+      camera.far = v
+      camera.updateProjectionMatrix()
+    })
 }
 
 function particleSystem(effectName) {
@@ -578,4 +622,33 @@ function particleSystem(effectName) {
     (xhr) => {
       console.warn('[ParticleEffectsMarker] an error happened while loading ' + path)
     })
+}
+
+function initDepth() {
+  depthTarget = new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight)
+  depthTarget.texture.format = THREE.RGBFormat
+  depthTarget.texture.minFilter = THREE.NearestFilter
+  depthTarget.texture.magFilter = THREE.NearestFilter
+  depthTarget.texture.generateMipmaps = false
+  depthTarget.stencilBuffer = false
+  depthTarget.depthBuffer = true
+  depthTarget.depthTexture = new THREE.DepthTexture()
+  depthTarget.depthTexture.type = THREE.UnsignedShortType
+
+  postCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1)
+  depthuniform = {
+    cameraNear: { value: camera.near },
+    cameraFar: { value: camera.far },
+    tDiffuse: { value: depthTarget.texture },
+    tDepth: { value: depthTarget.depthTexture }
+  }
+  var postMaterial = new THREE.ShaderMaterial({
+    vertexShader: depthShader.vert,
+    fragmentShader: depthShader.frag,
+    uniforms: depthuniform
+  })
+  var postPlane = new THREE.PlaneBufferGeometry(2, 2)
+  var postQuad = new THREE.Mesh(postPlane, postMaterial)
+  postScene = new THREE.Scene()
+  postScene.add(postQuad)
 }

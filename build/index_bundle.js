@@ -531,11 +531,13 @@ ParticleEngine.prototype.destroy = function () {}
 "use strict";
 Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__shaders_phong_js__ = __webpack_require__(2);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__ParticleEngine_ParticleEngine_js__ = __webpack_require__(0);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__ParticleEngine_ParticleEngineExamples_js__ = __webpack_require__(3);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_3_util__ = __webpack_require__(4);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_3_util___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_3_util__);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__shaders_depth_js__ = __webpack_require__(9);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__ParticleEngine_ParticleEngine_js__ = __webpack_require__(0);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_3__ParticleEngine_ParticleEngineExamples_js__ = __webpack_require__(3);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_4_util__ = __webpack_require__(4);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_4_util___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_4_util__);
 // import * as THREE from 'three'
+
 
 
 
@@ -543,9 +545,18 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
 
 var container, stats;
 var camera, scene, renderer;
+<<<<<<< HEAD
 var controls, ambientLight, directionalLight, spotLight;
 var pointLight, planeuniform, verticalMirror, spotLight2;
+=======
+var controls, ambientLight, directionalLight, spotLight, pointLight, planeuniform;
+>>>>>>> 78ff130aa23d274f4d41d8142c46c271173ea831
 var miku, stage;
+var depthTarget,
+    postCamera,
+    postScene,
+    renderDepthFlag = false,
+    depthuniform;
 window.particleEngine = null;
 var spotlightHelper2, spotLightHelper, pointLightHelper;
 
@@ -557,7 +568,7 @@ var SHADOW_MAP_HEIGHT = 1024;
 var SCREEN_WIDTH = window.innerWidth;
 var SCREEN_HEIGHT = window.innerHeight;
 var NEAR = 1;
-var FAR = 10000;
+var FAR = 1000;
 
 init();
 animate();
@@ -588,6 +599,7 @@ function init() {
   controls.minDistance = 10;
   controls.maxDistance = 800;
   controls.enablePan = true;
+  controls.update();
 
   // lights
   ambientLight = new THREE.AmbientLight(0xcccccc, 0.4);
@@ -674,7 +686,7 @@ function init() {
 
       // verticalMirror.target = object
       spotLight.target = object;
-      scene.add(spotLight.target);
+      object.updateMatrixWorld();
 
       controls.target.copy(object.position);
       controls.update();
@@ -819,9 +831,12 @@ function init() {
   scene.add(spotlightHelper2);
   plane.material.uniforms.textureMatrixProj.value = makeProjectiveMatrixForLight(spotLight2);
 
+  initDepth();
+
   window.addEventListener('resize', onWindowResize, false);
 
   //mirror reflector
+<<<<<<< HEAD
   verticalMirror = new THREE.Reflector(400, 350, {
     clipBias: 0.002,
     textureWidth: SCREEN_WIDTH * window.devicePixelRatio,
@@ -836,6 +851,21 @@ function init() {
   verticalMirror.visible = false;
   // verticalMirror.lookAtPosition.add(-camera.matrixWorld.position)
   scene.add(verticalMirror);
+=======
+  // var verticalMirror = new THREE.Reflector(400, 350, {
+  //   clipBias: 0.002,
+  //   textureWidth: SCREEN_WIDTH * window.devicePixelRatio,
+  //   textureHeight: SCREEN_HEIGHT * window.devicePixelRatio,
+  //   color: 0x889999,
+  //   recursion: 1
+  // })
+  // verticalMirror.position.y = 50
+  // verticalMirror.position.x = -260
+  // verticalMirror.position.z = -70
+  // verticalMirror.rotateY(Math.PI / 2)
+  // // verticalMirror.lookAtPosition.add(-camera.matrixWorld.position)
+  // scene.add(verticalMirror)
+>>>>>>> 78ff130aa23d274f4d41d8142c46c271173ea831
 }
 
 function onWindowResize() {
@@ -858,10 +888,17 @@ function animate(time) {
   }
   lastTime = time;
   render();
+  if (renderDepthFlag) {
+    renderer.render(postScene, postCamera);
+  }
 }
 
 function render() {
-  renderer.render(scene, camera);
+  if (renderDepthFlag) {
+    renderer.render(scene, camera, depthTarget);
+  } else {
+    renderer.render(scene, camera);
+  }
 }
 
 function makeProjectiveMatrixForLight(l) {
@@ -1068,10 +1105,45 @@ function initGUI() {
     pointLightHelper.visible = value;
   });
   // folder.open()
+
+  folder = gui.addFolder("Projective texturing");
+  let projectiveConf = {
+    showMapTexture: planeuniform.showMapTexture.value,
+    blendingParam: planeuniform.blendingParam.value
+  };
+  folder.add(projectiveConf, 'showMapTexture').onChange(v => {
+    planeuniform.showMapTexture.value = v;
+  });
+  folder.add(projectiveConf, 'blendingParam').min(0.0).max(1.0).step(0.1).onChange(v => {
+    planeuniform.blendingParam.value = v;
+  });
+
+  folder = gui.addFolder("Depth Buffer");
+  let depthConf = {
+    'render depth': renderDepthFlag,
+    'camera near': depthuniform.cameraNear.value,
+    'camera far': depthuniform.cameraFar.value
+  };
+  folder.add(depthConf, 'render depth').onChange(v => {
+    renderDepthFlag = v;
+    if (v === false) {
+      camera.near = NEAR;
+      camera.far = FAR;
+      camera.updateProjectionMatrix();
+    }
+  });
+  folder.add(depthConf, 'camera near').min(1).max(100).step(1.0).onChange(v => {
+    camera.near = v;
+    camera.updateProjectionMatrix();
+  });
+  folder.add(depthConf, 'camera far').min(500).max(FAR).step(1.0).onChange(v => {
+    camera.far = v;
+    camera.updateProjectionMatrix();
+  });
 }
 
 function particleSystem(effectName) {
-  let example = new __WEBPACK_IMPORTED_MODULE_2__ParticleEngine_ParticleEngineExamples_js__["a" /* Examples */]();
+  let example = new __WEBPACK_IMPORTED_MODULE_3__ParticleEngine_ParticleEngineExamples_js__["a" /* Examples */]();
   let paras = example.getEffect(effectName);
 
   if (!paras) {
@@ -1083,7 +1155,7 @@ function particleSystem(effectName) {
   loader.load('../images/smokeparticle.png', _texture => {
     paras.particleTexture = _texture;
     let group = new THREE.Group();
-    particleEngine = new __WEBPACK_IMPORTED_MODULE_1__ParticleEngine_ParticleEngine_js__["a" /* ParticleEngine */]();
+    particleEngine = new __WEBPACK_IMPORTED_MODULE_2__ParticleEngine_ParticleEngine_js__["a" /* ParticleEngine */]();
     particleEngine.setValues(paras);
     particleEngine.initialize();
 
@@ -1094,6 +1166,35 @@ function particleSystem(effectName) {
   }, xhr => {
     console.warn('[ParticleEffectsMarker] an error happened while loading ' + path);
   });
+}
+
+function initDepth() {
+  depthTarget = new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight);
+  depthTarget.texture.format = THREE.RGBFormat;
+  depthTarget.texture.minFilter = THREE.NearestFilter;
+  depthTarget.texture.magFilter = THREE.NearestFilter;
+  depthTarget.texture.generateMipmaps = false;
+  depthTarget.stencilBuffer = false;
+  depthTarget.depthBuffer = true;
+  depthTarget.depthTexture = new THREE.DepthTexture();
+  depthTarget.depthTexture.type = THREE.UnsignedShortType;
+
+  postCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+  depthuniform = {
+    cameraNear: { value: camera.near },
+    cameraFar: { value: camera.far },
+    tDiffuse: { value: depthTarget.texture },
+    tDepth: { value: depthTarget.depthTexture }
+  };
+  var postMaterial = new THREE.ShaderMaterial({
+    vertexShader: __WEBPACK_IMPORTED_MODULE_1__shaders_depth_js__["a" /* default */].vert,
+    fragmentShader: __WEBPACK_IMPORTED_MODULE_1__shaders_depth_js__["a" /* default */].frag,
+    uniforms: depthuniform
+  });
+  var postPlane = new THREE.PlaneBufferGeometry(2, 2);
+  var postQuad = new THREE.Mesh(postPlane, postMaterial);
+  postScene = new THREE.Scene();
+  postScene.add(postQuad);
 }
 
 /***/ }),
@@ -2516,6 +2617,59 @@ if (typeof Object.create === 'function') {
   }
 }
 
+
+/***/ }),
+/* 9 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+var depthShader = {};
+
+depthShader.vert = `
+varying vec2 vUv;
+void main() {
+  vUv = uv;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}
+`;
+
+depthShader.frag = `
+#include <packing>
+varying vec2 vUv;
+uniform sampler2D tDiffuse;
+uniform sampler2D tDepth;
+uniform float cameraNear;
+uniform float cameraFar;
+
+float readDepth (sampler2D depthSampler, vec2 coord) {
+  float fragCoordZ = texture2D(depthSampler, coord).x;
+  float viewZ = perspectiveDepthToViewZ( fragCoordZ, cameraNear, cameraFar );
+  return viewZToOrthographicDepth( viewZ, cameraNear, cameraFar );
+}
+
+float remap( float minval, float maxval, float curval )
+{
+    return ( curval - minval ) / ( maxval - minval );
+}
+
+void main() {
+  // vec3 diffuse = texture2D(tDiffuse, vUv).rgb;
+  float depth = readDepth(tDepth, vUv);
+
+  const vec4 GREEN = vec4( 0.0, 1.0, 0.0, 1.0 );
+  const vec4 BLUE = vec4( 0.0, 0.0, 1.0, 1.0 );
+  const vec4 RED   = vec4( 1.0, 0.0, 0.0, 1.0 );
+
+  if( depth < 0.5 )
+    gl_FragColor = mix( GREEN, BLUE, remap( 0.0, 0.5, depth ) );
+  else
+    gl_FragColor = mix( BLUE, RED, remap( 0.5, 1.0, depth ) );
+  // gl_FragColor.rgb = vec3(depth);
+  // gl_FragColor.a = 1.0;
+}
+`;
+
+/* harmony default export */ __webpack_exports__["a"] = (depthShader);
 
 /***/ })
 /******/ ]);
