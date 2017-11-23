@@ -228,13 +228,32 @@ function init() {
     'type': 'b',
     'value': true
   }
+  uniforms["time"] = {
+    'type': 'f',
+    'value': 0.5
+  }
   window.m = new THREE.ShaderMaterial({
     fragmentShader: phong.frag,
     vertexShader: phong.vert,
     uniforms: uniforms,
     lights: true
   })
-  window.box = new THREE.Mesh(new THREE.BoxGeometry(10, 10, 10), m)
+  let box = new THREE.Mesh(new THREE.BoxBufferGeometry(10, 10, 10), m)
+  scene.add(box)
+  box = new THREE.Mesh(new THREE.BoxBufferGeometry(10, 10, 10), m)
+  box.position.set(0, -10, 0)
+  scene.add(box)
+  box = new THREE.Mesh(new THREE.BoxBufferGeometry(10, 10, 10), m)
+  box.position.set(0, -20, 0)
+  scene.add(box)
+  box = new THREE.Mesh(new THREE.BoxBufferGeometry(10, 10, 10), m)
+  box.position.set(0, -30, 0)
+  scene.add(box)
+  box = new THREE.Mesh(new THREE.BoxBufferGeometry(10, 10, 10), m)
+  box.position.set(0, -40, 0)
+  scene.add(box)
+  box = new THREE.Mesh(new THREE.BoxBufferGeometry(10, 10, 10), m)
+  box.position.set(0, -50, 0)
   scene.add(box)
 
   window.addEventListener('resize', onWindowResize, false)
@@ -246,7 +265,8 @@ function onWindowResize() {
   renderer.setSize(window.innerWidth, window.innerHeight)
 }
 
-function animate() {
+function animate(time) {
+  uniforms.time.value = time / 300
   requestAnimationFrame(animate)
   render()
 }

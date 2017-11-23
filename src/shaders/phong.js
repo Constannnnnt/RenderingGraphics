@@ -9,6 +9,7 @@ uniform vec3 specular;
 uniform float shininess;
 uniform float opacity;
 uniform bool showMapTexture;
+uniform float time;
 #include <common>
 #include <packing>
 #include <dithering_pars_fragment>
@@ -40,7 +41,9 @@ void main() {
 	#include <logdepthbuf_fragment>
   #ifdef USE_MAP
     if (showMapTexture) {
-      vec4 texelColor = texture2D( map, vUv );
+			vec2 transformedvUv = vec2(vUv);
+			transformedvUv.x = mod(transformedvUv.x + time, 1.0);
+      vec4 texelColor = texture2D( map, transformedvUv );
       texelColor = mapTexelToLinear( texelColor );
       diffuseColor *= texelColor;
     }
@@ -90,7 +93,11 @@ varying vec3 vViewPosition;
 #include <logdepthbuf_pars_vertex>
 #include <clipping_planes_pars_vertex>
 void main() {
-	#include <uv_vertex>
+	#if defined( USE_MAP ) || defined( USE_BUMPMAP ) || defined( USE_NORMALMAP ) || defined( USE_SPECULARMAP ) || defined( USE_ALPHAMAP ) || defined( USE_EMISSIVEMAP ) || defined( USE_ROUGHNESSMAP ) || defined( USE_METALNESSMAP )
+
+		vUv = ( uvTransform * vec3( uv, 1 ) ).xy;
+
+	#endif
 	#include <uv2_vertex>
 	#include <color_vertex>
 	#include <beginnormal_vertex>

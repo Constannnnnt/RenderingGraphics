@@ -69,8 +69,8 @@
 
 "use strict";
 Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__shaders_phong_js__ = __webpack_require__(6);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_util__ = __webpack_require__(1);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__shaders_phong_js__ = __webpack_require__(1);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_util__ = __webpack_require__(2);
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_util___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_1_util__);
 // import * as THREE from 'three'
 
@@ -297,13 +297,32 @@ function init() {
     'type': 'b',
     'value': true
   };
+  uniforms["time"] = {
+    'type': 'f',
+    'value': 0.5
+  };
   window.m = new THREE.ShaderMaterial({
     fragmentShader: __WEBPACK_IMPORTED_MODULE_0__shaders_phong_js__["a" /* default */].frag,
     vertexShader: __WEBPACK_IMPORTED_MODULE_0__shaders_phong_js__["a" /* default */].vert,
     uniforms: uniforms,
     lights: true
   });
-  window.box = new THREE.Mesh(new THREE.BoxGeometry(10, 10, 10), m);
+  let box = new THREE.Mesh(new THREE.BoxBufferGeometry(10, 10, 10), m);
+  scene.add(box);
+  box = new THREE.Mesh(new THREE.BoxBufferGeometry(10, 10, 10), m);
+  box.position.set(0, -10, 0);
+  scene.add(box);
+  box = new THREE.Mesh(new THREE.BoxBufferGeometry(10, 10, 10), m);
+  box.position.set(0, -20, 0);
+  scene.add(box);
+  box = new THREE.Mesh(new THREE.BoxBufferGeometry(10, 10, 10), m);
+  box.position.set(0, -30, 0);
+  scene.add(box);
+  box = new THREE.Mesh(new THREE.BoxBufferGeometry(10, 10, 10), m);
+  box.position.set(0, -40, 0);
+  scene.add(box);
+  box = new THREE.Mesh(new THREE.BoxBufferGeometry(10, 10, 10), m);
+  box.position.set(0, -50, 0);
   scene.add(box);
 
   window.addEventListener('resize', onWindowResize, false);
@@ -315,7 +334,8 @@ function onWindowResize() {
   renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
-function animate() {
+function animate(time) {
+  uniforms.time.value = time / 300;
   requestAnimationFrame(animate);
   render();
 }
@@ -438,6 +458,138 @@ function initGUI() {
 
 /***/ }),
 /* 1 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+var phong = {};
+
+phong.frag = `
+#define PHONG
+#define USE_MAP
+uniform vec3 diffuse;
+uniform vec3 emissive;
+uniform vec3 specular;
+uniform float shininess;
+uniform float opacity;
+uniform bool showMapTexture;
+uniform float time;
+#include <common>
+#include <packing>
+#include <dithering_pars_fragment>
+#include <color_pars_fragment>
+#include <uv_pars_fragment>
+#include <uv2_pars_fragment>
+#include <map_pars_fragment>
+#include <alphamap_pars_fragment>
+#include <aomap_pars_fragment>
+#include <lightmap_pars_fragment>
+#include <emissivemap_pars_fragment>
+#include <envmap_pars_fragment>
+#include <gradientmap_pars_fragment>
+#include <fog_pars_fragment>
+#include <bsdfs>
+#include <lights_pars>
+#include <lights_phong_pars_fragment>
+#include <shadowmap_pars_fragment>
+#include <bumpmap_pars_fragment>
+#include <normalmap_pars_fragment>
+#include <specularmap_pars_fragment>
+#include <logdepthbuf_pars_fragment>
+#include <clipping_planes_pars_fragment>
+void main() {
+	#include <clipping_planes_fragment>
+	vec4 diffuseColor = vec4( diffuse, opacity );
+	ReflectedLight reflectedLight = ReflectedLight( vec3( 0.0 ), vec3( 0.0 ), vec3( 0.0 ), vec3( 0.0 ) );
+	vec3 totalEmissiveRadiance = emissive;
+	#include <logdepthbuf_fragment>
+  #ifdef USE_MAP
+    if (showMapTexture) {
+			vec2 transformedvUv = vec2(vUv);
+			transformedvUv.x = mod(transformedvUv.x + time, 1.0);
+      vec4 texelColor = texture2D( map, transformedvUv );
+      texelColor = mapTexelToLinear( texelColor );
+      diffuseColor *= texelColor;
+    }
+  #endif
+	#include <color_fragment>
+	#include <alphamap_fragment>
+	#include <alphatest_fragment>
+	#include <specularmap_fragment>
+	#ifdef DOUBLE_SIDED
+		float flipNormal = ( float( gl_FrontFacing ) * 2.0 - 1.0 );
+	#else
+		float flipNormal = 1.0;
+	#endif
+	#include <normal_fragment>
+	#include <emissivemap_fragment>
+	#include <lights_phong_fragment>
+	#include <lights_template>
+	#include <aomap_fragment>
+	vec3 outgoingLight = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse + reflectedLight.directSpecular + reflectedLight.indirectSpecular + totalEmissiveRadiance;
+	#include <envmap_fragment>
+	gl_FragColor = vec4( outgoingLight, diffuseColor.a );
+	#include <tonemapping_fragment>
+	#include <encodings_fragment>
+	#include <fog_fragment>
+	#include <premultiplied_alpha_fragment>
+	#include <dithering_fragment>
+}
+`;
+
+phong.vert = `
+#define PHONG
+#define USE_MAP
+varying vec3 vViewPosition;
+#ifndef FLAT_SHADED
+	varying vec3 vNormal;
+#endif
+#include <common>
+#include <uv_pars_vertex>
+#include <uv2_pars_vertex>
+#include <displacementmap_pars_vertex>
+#include <envmap_pars_vertex>
+#include <color_pars_vertex>
+#include <fog_pars_vertex>
+#include <morphtarget_pars_vertex>
+#include <skinning_pars_vertex>
+#include <shadowmap_pars_vertex>
+#include <logdepthbuf_pars_vertex>
+#include <clipping_planes_pars_vertex>
+void main() {
+	#if defined( USE_MAP ) || defined( USE_BUMPMAP ) || defined( USE_NORMALMAP ) || defined( USE_SPECULARMAP ) || defined( USE_ALPHAMAP ) || defined( USE_EMISSIVEMAP ) || defined( USE_ROUGHNESSMAP ) || defined( USE_METALNESSMAP )
+
+		vUv = ( uvTransform * vec3( uv, 1 ) ).xy;
+
+	#endif
+	#include <uv2_vertex>
+	#include <color_vertex>
+	#include <beginnormal_vertex>
+	#include <morphnormal_vertex>
+	#include <skinbase_vertex>
+	#include <skinnormal_vertex>
+	#include <defaultnormal_vertex>
+	#ifndef FLAT_SHADED
+		vNormal = normalize( transformedNormal );
+	#endif
+	#include <begin_vertex>
+	#include <morphtarget_vertex>
+	#include <skinning_vertex>
+	#include <displacementmap_vertex>
+	#include <project_vertex>
+	#include <logdepthbuf_vertex>
+	#include <clipping_planes_vertex>
+	vViewPosition = - mvPosition.xyz;
+	#include <worldpos_vertex>
+	#include <envmap_vertex>
+	#include <shadowmap_vertex>
+	#include <fog_vertex>
+}
+`;
+
+/* harmony default export */ __webpack_exports__["a"] = (phong);
+
+/***/ }),
+/* 2 */
 /***/ (function(module, exports, __webpack_require__) {
 
 /* WEBPACK VAR INJECTION */(function(global, process) {// Copyright Joyent, Inc. and other Node contributors.
@@ -965,7 +1117,7 @@ function isPrimitive(arg) {
 }
 exports.isPrimitive = isPrimitive;
 
-exports.isBuffer = __webpack_require__(4);
+exports.isBuffer = __webpack_require__(5);
 
 function objectToString(o) {
   return Object.prototype.toString.call(o);
@@ -1009,7 +1161,7 @@ exports.log = function() {
  *     prototype.
  * @param {function} superCtor Constructor function to inherit prototype from.
  */
-exports.inherits = __webpack_require__(5);
+exports.inherits = __webpack_require__(6);
 
 exports._extend = function(origin, add) {
   // Don't do anything if add isn't an object
@@ -1027,10 +1179,10 @@ function hasOwnProperty(obj, prop) {
   return Object.prototype.hasOwnProperty.call(obj, prop);
 }
 
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(2), __webpack_require__(3)))
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(3), __webpack_require__(4)))
 
 /***/ }),
-/* 2 */
+/* 3 */
 /***/ (function(module, exports) {
 
 var g;
@@ -1057,7 +1209,7 @@ module.exports = g;
 
 
 /***/ }),
-/* 3 */
+/* 4 */
 /***/ (function(module, exports) {
 
 // shim for using process in browser
@@ -1247,7 +1399,7 @@ process.umask = function() { return 0; };
 
 
 /***/ }),
-/* 4 */
+/* 5 */
 /***/ (function(module, exports) {
 
 module.exports = function isBuffer(arg) {
@@ -1258,7 +1410,7 @@ module.exports = function isBuffer(arg) {
 }
 
 /***/ }),
-/* 5 */
+/* 6 */
 /***/ (function(module, exports) {
 
 if (typeof Object.create === 'function') {
@@ -1285,131 +1437,6 @@ if (typeof Object.create === 'function') {
   }
 }
 
-
-/***/ }),
-/* 6 */
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
-
-"use strict";
-var phong = {};
-
-phong.frag = `
-#define PHONG
-#define USE_MAP
-uniform vec3 diffuse;
-uniform vec3 emissive;
-uniform vec3 specular;
-uniform float shininess;
-uniform float opacity;
-uniform bool showMapTexture;
-#include <common>
-#include <packing>
-#include <dithering_pars_fragment>
-#include <color_pars_fragment>
-#include <uv_pars_fragment>
-#include <uv2_pars_fragment>
-#include <map_pars_fragment>
-#include <alphamap_pars_fragment>
-#include <aomap_pars_fragment>
-#include <lightmap_pars_fragment>
-#include <emissivemap_pars_fragment>
-#include <envmap_pars_fragment>
-#include <gradientmap_pars_fragment>
-#include <fog_pars_fragment>
-#include <bsdfs>
-#include <lights_pars>
-#include <lights_phong_pars_fragment>
-#include <shadowmap_pars_fragment>
-#include <bumpmap_pars_fragment>
-#include <normalmap_pars_fragment>
-#include <specularmap_pars_fragment>
-#include <logdepthbuf_pars_fragment>
-#include <clipping_planes_pars_fragment>
-void main() {
-	#include <clipping_planes_fragment>
-	vec4 diffuseColor = vec4( diffuse, opacity );
-	ReflectedLight reflectedLight = ReflectedLight( vec3( 0.0 ), vec3( 0.0 ), vec3( 0.0 ), vec3( 0.0 ) );
-	vec3 totalEmissiveRadiance = emissive;
-	#include <logdepthbuf_fragment>
-  #ifdef USE_MAP
-    if (showMapTexture) {
-      vec4 texelColor = texture2D( map, vUv );
-      texelColor = mapTexelToLinear( texelColor );
-      diffuseColor *= texelColor;
-    }
-  #endif
-	#include <color_fragment>
-	#include <alphamap_fragment>
-	#include <alphatest_fragment>
-	#include <specularmap_fragment>
-	#ifdef DOUBLE_SIDED
-		float flipNormal = ( float( gl_FrontFacing ) * 2.0 - 1.0 );
-	#else
-		float flipNormal = 1.0;
-	#endif
-	#include <normal_fragment>
-	#include <emissivemap_fragment>
-	#include <lights_phong_fragment>
-	#include <lights_template>
-	#include <aomap_fragment>
-	vec3 outgoingLight = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse + reflectedLight.directSpecular + reflectedLight.indirectSpecular + totalEmissiveRadiance;
-	#include <envmap_fragment>
-	gl_FragColor = vec4( outgoingLight, diffuseColor.a );
-	#include <tonemapping_fragment>
-	#include <encodings_fragment>
-	#include <fog_fragment>
-	#include <premultiplied_alpha_fragment>
-	#include <dithering_fragment>
-}
-`;
-
-phong.vert = `
-#define PHONG
-#define USE_MAP
-varying vec3 vViewPosition;
-#ifndef FLAT_SHADED
-	varying vec3 vNormal;
-#endif
-#include <common>
-#include <uv_pars_vertex>
-#include <uv2_pars_vertex>
-#include <displacementmap_pars_vertex>
-#include <envmap_pars_vertex>
-#include <color_pars_vertex>
-#include <fog_pars_vertex>
-#include <morphtarget_pars_vertex>
-#include <skinning_pars_vertex>
-#include <shadowmap_pars_vertex>
-#include <logdepthbuf_pars_vertex>
-#include <clipping_planes_pars_vertex>
-void main() {
-	#include <uv_vertex>
-	#include <uv2_vertex>
-	#include <color_vertex>
-	#include <beginnormal_vertex>
-	#include <morphnormal_vertex>
-	#include <skinbase_vertex>
-	#include <skinnormal_vertex>
-	#include <defaultnormal_vertex>
-	#ifndef FLAT_SHADED
-		vNormal = normalize( transformedNormal );
-	#endif
-	#include <begin_vertex>
-	#include <morphtarget_vertex>
-	#include <skinning_vertex>
-	#include <displacementmap_vertex>
-	#include <project_vertex>
-	#include <logdepthbuf_vertex>
-	#include <clipping_planes_vertex>
-	vViewPosition = - mvPosition.xyz;
-	#include <worldpos_vertex>
-	#include <envmap_vertex>
-	#include <shadowmap_vertex>
-	#include <fog_vertex>
-}
-`;
-
-/* harmony default export */ __webpack_exports__["a"] = (phong);
 
 /***/ })
 /******/ ]);
