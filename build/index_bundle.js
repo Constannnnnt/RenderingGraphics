@@ -545,22 +545,19 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
 
 var container, stats;
 var camera, scene, renderer;
-<<<<<<< HEAD
-var controls, ambientLight, directionalLight, spotLight;
-var pointLight, planeuniform, verticalMirror, spotLight2;
-=======
-var controls, ambientLight, directionalLight, spotLight, pointLight, planeuniform;
-<<<<<<< HEAD
+var controls, ambientLight, directionalLight, spotLight, pointLight, planeuniform, spotLight2, verticalMirror;
 var miku, stage, floor;
-=======
->>>>>>> 78ff130aa23d274f4d41d8142c46c271173ea831
-var miku, stage;
->>>>>>> 9b2c10180bb907035f279d7ccd11ba070aa4d579
 var depthTarget,
     postCamera,
     postScene,
     renderDepthFlag = false,
     depthuniform;
+var useGPUPicker = false,
+    debugGPUPicker = false;
+var textureUniform,
+    animationSpeed = 10;
+
+var animationArray = [];
 
 window.pickableObjectList = [];
 window.particleEngine = null;
@@ -582,7 +579,7 @@ animate();
 function init() {
   // scene
   scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x00cc00);
+  scene.background = new THREE.Color(0x050505);
 
   // canvas
   container = document.createElement('div');
@@ -627,8 +624,10 @@ function init() {
   pointLight.castShadow = true;
   scene.add(pointLight);
   var sphereSize = 1;
+
   pointLightHelper = new THREE.PointLightHelper(pointLight, sphereSize);
   pointLightHelper.visible = false;
+
   scene.add(pointLightHelper);
 
   // spotlight
@@ -688,6 +687,7 @@ function init() {
         }
       });
       miku = object;
+      miku.name = 'miku';
       scene.add(object);
 
       // verticalMirror.target = object
@@ -727,56 +727,74 @@ function init() {
       console.log(xhr);
     });
   });
-<<<<<<< HEAD
-=======
 
   spotLightHelper = new THREE.SpotLightHelper(spotLight);
   spotLightHelper.visible = false;
   scene.add(spotLightHelper);
 
->>>>>>> 9b2c10180bb907035f279d7ccd11ba070aa4d579
   let huajiTexture = textureLoader.load("../images/huaji.png");
   let backboardTex = textureLoader.load("../images/backboard.jpg");
 
-  window.shader = THREE.ShaderLib["phong"];
-  window.uniforms = THREE.UniformsUtils.clone(shader.uniforms);
-  uniforms["map"].value = huajiTexture;
-  uniforms["showMapTexture"] = {
+  let shader = THREE.ShaderLib["phong"];
+  textureUniform = THREE.UniformsUtils.clone(shader.uniforms);
+  textureUniform["map"].value = huajiTexture;
+  textureUniform["showMapTexture"] = {
     'type': 'b',
     'value': true
   };
-  uniforms["time"] = {
+  textureUniform["time"] = {
     'type': 'f',
     'value': 0.5
   };
-  window.m = new THREE.ShaderMaterial({
+  textureUniform["texScrolling"] = {
+    'type': 'b',
+    'value': true
+  };
+  let scrollingTextureShading = new THREE.ShaderMaterial({
     fragmentShader: __WEBPACK_IMPORTED_MODULE_0__shaders_phong_js__["a" /* default */].frag,
     vertexShader: __WEBPACK_IMPORTED_MODULE_0__shaders_phong_js__["a" /* default */].vert,
-    uniforms: uniforms,
+    uniforms: textureUniform,
     lights: true
   });
 
   let huajiArray = new THREE.Group();
-  let box = new THREE.Mesh(new THREE.BoxBufferGeometry(10, 10, 10), m);
+  let box = new THREE.Mesh(new THREE.BoxBufferGeometry(10, 10, 10), scrollingTextureShading);
   huajiArray.add(box);
-  box = new THREE.Mesh(new THREE.BoxBufferGeometry(10, 10, 10), m);
+  box = new THREE.Mesh(new THREE.BoxBufferGeometry(10, 10, 10), scrollingTextureShading);
+  box.position.set(0, 10, 0);
+  huajiArray.add(box);
+  box = new THREE.Mesh(new THREE.BoxBufferGeometry(10, 10, 10), scrollingTextureShading);
   box.position.set(0, -10, 0);
   huajiArray.add(box);
-  box = new THREE.Mesh(new THREE.BoxBufferGeometry(10, 10, 10), m);
+  box = new THREE.Mesh(new THREE.BoxBufferGeometry(10, 10, 10), scrollingTextureShading);
   box.position.set(0, -20, 0);
   huajiArray.add(box);
-  box = new THREE.Mesh(new THREE.BoxBufferGeometry(10, 10, 10), m);
+  box = new THREE.Mesh(new THREE.BoxBufferGeometry(10, 10, 10), scrollingTextureShading);
   box.position.set(0, -30, 0);
   huajiArray.add(box);
-  box = new THREE.Mesh(new THREE.BoxBufferGeometry(10, 10, 10), m);
+  box = new THREE.Mesh(new THREE.BoxBufferGeometry(10, 10, 10), scrollingTextureShading);
   box.position.set(0, -40, 0);
   huajiArray.add(box);
-  box = new THREE.Mesh(new THREE.BoxBufferGeometry(10, 10, 10), m);
+  box = new THREE.Mesh(new THREE.BoxBufferGeometry(10, 10, 10), scrollingTextureShading);
   box.position.set(0, -50, 0);
   huajiArray.add(box);
+  huajiArray.position.set(140, -40, -90);
+  huajiArray.updateMatrixWorld();
   scene.add(huajiArray);
   pickableObjectList.push({ object: huajiArray });
-
+  huajiArray = huajiArray.clone();
+  huajiArray.position.set(-190, -40, -90);
+  scene.add(huajiArray);
+  pickableObjectList.push({ object: huajiArray });
+  huajiArray = huajiArray.clone();
+  huajiArray.position.set(-190, -40, 105);
+  scene.add(huajiArray);
+  pickableObjectList.push({ object: huajiArray });
+  huajiArray = huajiArray.clone();
+  huajiArray.position.set(140, -40, 105);
+  scene.add(huajiArray);
+  pickableObjectList.push({ object: huajiArray });
+  window.huajiArray = huajiArray;
   particleSystem('clouds');
 
   // projective texture mapping
@@ -822,7 +840,10 @@ function init() {
   planeuniform['spotLightColor'] = {
     value: new THREE.Color(0xffffff)
   };
-  let planegeo = new THREE.PlaneBufferGeometry(200, 200);
+  planeuniform['texScrolling'] = {
+    value: false
+  };
+  let planegeo = new THREE.PlaneBufferGeometry(390, 200);
   let planemtl = new THREE.ShaderMaterial({
     fragmentShader: __WEBPACK_IMPORTED_MODULE_0__shaders_phong_js__["a" /* default */].frag,
     vertexShader: __WEBPACK_IMPORTED_MODULE_0__shaders_phong_js__["a" /* default */].vert,
@@ -834,7 +855,7 @@ function init() {
   scene.add(plane);
 
   let targetObject = new THREE.Object3D();
-  targetObject.position.set(-50, 0, -130);
+  targetObject.position.set(0, -20, -120);
   spotLight2.target = targetObject;
   targetObject.updateMatrixWorld();
   scene.add(spotLight2);
@@ -851,7 +872,6 @@ function init() {
   window.addEventListener('mouseup', pick, false);
 
   //mirror reflector
-<<<<<<< HEAD
   verticalMirror = new THREE.Reflector(400, 350, {
     clipBias: 0.002,
     textureWidth: SCREEN_WIDTH * window.devicePixelRatio,
@@ -866,21 +886,6 @@ function init() {
   verticalMirror.visible = false;
   // verticalMirror.lookAtPosition.add(-camera.matrixWorld.position)
   scene.add(verticalMirror);
-=======
-  // var verticalMirror = new THREE.Reflector(400, 350, {
-  //   clipBias: 0.002,
-  //   textureWidth: SCREEN_WIDTH * window.devicePixelRatio,
-  //   textureHeight: SCREEN_HEIGHT * window.devicePixelRatio,
-  //   color: 0x889999,
-  //   recursion: 1
-  // })
-  // verticalMirror.position.y = 50
-  // verticalMirror.position.x = -260
-  // verticalMirror.position.z = -70
-  // verticalMirror.rotateY(Math.PI / 2)
-  // // verticalMirror.lookAtPosition.add(-camera.matrixWorld.position)
-  // scene.add(verticalMirror)
->>>>>>> 78ff130aa23d274f4d41d8142c46c271173ea831
 }
 
 function onWindowResize() {
@@ -895,11 +900,22 @@ function animate(time) {
   if (!lastTime) {
     lastTime = time;
   }
-  uniforms.time.value = time / 300;
+  textureUniform.time.value = time / 10000 * animationSpeed;
   requestAnimationFrame(animate);
+  let delta = (time - lastTime) / 400;
+  animationArray.map((a, i) => {
+    if (a.duration > 0) {
+      a.direction.normalize();
+      a.target.position.x += delta * animationSpeed * a.direction.x;
+      a.target.position.y += delta * animationSpeed * a.direction.y;
+      a.target.position.z += delta * animationSpeed * a.direction.z;
+      a.duration -= delta;
+
+      spotLightHelper.update();
+    }
+  });
   if (particleEngine) {
-    let delta = time - lastTime;
-    particleEngine.update(delta / 1000);
+    particleEngine.update(delta);
   }
   lastTime = time;
   render();
@@ -937,17 +953,15 @@ function makeProjectiveMatrixForLight(l) {
 }
 
 function initGUI() {
-  // var API = {
-  //   'show directional light': true,
-  //   'show spot light': true,
-  //   'show ambient light': true
-  // }
-  // var gui = new dat.GUI()
-  // gui.add(API, 'show directional light').onChange(function () {
-  //   directionalLight.visible = API['show directional light']
-  // })
   let gui = new dat.GUI({
     width: '300px'
+  });
+
+  let basicConf = {
+    'animation speed': animationSpeed
+  };
+  gui.add(basicConf, 'animation speed').min(1.0).max(80.0).step(1.0).onChange(v => {
+    animationSpeed = v;
   });
 
   let folder = gui.addFolder("Miku");
@@ -1155,6 +1169,18 @@ function initGUI() {
     camera.far = v;
     camera.updateProjectionMatrix();
   });
+
+  folder = gui.addFolder("GPU Picker");
+  let gpuPickerConf = {
+    'enable': useGPUPicker,
+    'debug': debugGPUPicker
+  };
+  folder.add(gpuPickerConf, 'enable').onChange(v => {
+    useGPUPicker = v;
+  });
+  folder.add(gpuPickerConf, 'debug').onChange(v => {
+    debugGPUPicker = v;
+  });
 }
 
 function particleSystem(effectName) {
@@ -1235,86 +1261,98 @@ var GPUPickerMaterial = new THREE.ShaderMaterial({
 });
 var visibilityMapping = {};
 function pick(event) {
-  let x = event.clientX;
-  let y = event.clientY;
-  let mouse = { x, y };
+  if (event.button === 0 && useGPUPicker) {
+    let x = event.clientX;
+    let y = event.clientY;
+    let mouse = { x, y };
+    let offsetTimes = 2000;
 
-  scene.traverse(obj => {
-    visibilityMapping[obj.uuid] = obj.visible;
-    obj.visible = false;
-  });
-  scene.visible = true;
+    scene.traverse(obj => {
+      visibilityMapping[obj.uuid] = obj.visible;
+      obj.visible = false;
+    });
+    scene.visible = true;
 
-  pickableObjectList.map((obj, index) => {
-    obj.object.visible = true;
-    obj.ID = index;
-    obj.materials = [];
-    obj.object.traverse(c => {
-      c.visible = true;
-      if (c instanceof THREE.Mesh) {
+    pickableObjectList.map((obj, index) => {
+      obj.object.visible = true;
+      obj.ID = index * offsetTimes;
+      obj.materials = [];
+      obj.object.traverse(c => {
         c.visible = true;
-        obj.materials.push(c.material);
-        c.material = GPUPickerMaterial.clone();
-        c.material.uniforms.color.value = new THREE.Color().setHex(obj.ID);
-      }
+        if (c instanceof THREE.Mesh) {
+          c.visible = true;
+          obj.materials.push(c.material);
+          c.material = GPUPickerMaterial.clone();
+          c.material.uniforms.color.value = new THREE.Color().setHex(obj.ID);
+        }
+      });
     });
-  });
-  // renderer.render(scene, camera)
+    // renderer.render(scene, camera)
 
-  let pickingTexture = new THREE.WebGLRenderTarget();
-  let size = renderer.getSize();
-  let pixelBuffer = new Uint8Array(4 * size.width * size.height);
-  pickingTexture.setSize(size.width, size.height);
-  pickingTexture.texture.minFilter = THREE.LinearFilter;
-  pickingTexture.texture.generateMipmaps = false;
-  renderer.render(scene, camera, pickingTexture);
-  renderer.readRenderTargetPixels(pickingTexture, 0, 0, size.width, size.height, pixelBuffer);
+    let pickingTexture = new THREE.WebGLRenderTarget();
+    let size = renderer.getSize();
+    let pixelBuffer = new Uint8Array(4 * size.width * size.height);
+    pickingTexture.setSize(size.width, size.height);
+    pickingTexture.texture.minFilter = THREE.LinearFilter;
+    pickingTexture.texture.generateMipmaps = false;
+    renderer.render(scene, camera, pickingTexture);
+    renderer.readRenderTargetPixels(pickingTexture, 0, 0, size.width, size.height, pixelBuffer);
 
-  // var canvaswindow = window.open("", "_blank")
-  // canvaswindow.document.write(
-  //   `
-  //     <title>test</title>
-  //     <p>test</p>
-  //     <p>rgb</p>
-  //     <div><canvas id="targetrgb" width=${size.width} height=${size.height} /></div>
-  //     `
-  // )
-  // var c = canvaswindow.document.getElementById('targetrgb')
-  // var ctx = c.getContext("2d")
-  // ctx.clearRect(0, 0, size.width, size.height)
-  // var rgbimdata = ctx.createImageData(size.width, size.height)
-  // for (let i = 0; i < rgbimdata.data.length; i += 1) {
-  //   rgbimdata.data[i] = pixelBuffer[i]
-  // }
-  // ctx.putImageData(rgbimdata, 0, 0)
-
-  // restore visibility
-  pickableObjectList.map(obj => {
-    obj.object.traverse(c => {
-      if (c instanceof THREE.Mesh) {
-        c.material = obj.materials.shift();
+    if (debugGPUPicker) {
+      var canvaswindow = window.open("", "_blank");
+      canvaswindow.document.write(`
+          <title>test</title>
+          <p>test</p>
+          <p>rgb</p>
+          <div><canvas id="targetrgb" width=${size.width} height=${size.height} /></div>
+          `);
+      var c = canvaswindow.document.getElementById('targetrgb');
+      var ctx = c.getContext("2d");
+      ctx.clearRect(0, 0, size.width, size.height);
+      var rgbimdata = ctx.createImageData(size.width, size.height);
+      for (let i = 0; i < rgbimdata.data.length; i += 1) {
+        rgbimdata.data[i] = pixelBuffer[i];
       }
-    });
-  });
+      ctx.putImageData(rgbimdata, 0, 0);
+    }
 
-  scene.traverse(obj => {
-    obj.visible = visibilityMapping[obj.uuid];
-  });
-
-  let index = (mouse.x + (pickingTexture.height - mouse.y) * pickingTexture.width) * 4;
-  let id = pixelBuffer[index] * 255 * 255 | pixelBuffer[index + 1] * 255 | pixelBuffer[index + 2];
-  if (id < pickableObjectList.length) {
-    let result;
+    // restore visibility
     pickableObjectList.map(obj => {
-      if (obj.ID === id) {
-        result = obj;
-      }
+      obj.object.traverse(c => {
+        if (c instanceof THREE.Mesh) {
+          c.material = obj.materials.shift();
+        }
+      });
     });
-    console.log('picked target', result);
-  } else {
-    console.log('no object picked');
+
+    scene.traverse(obj => {
+      obj.visible = visibilityMapping[obj.uuid];
+    });
+
+    let index = (mouse.x + (pickingTexture.height - mouse.y) * pickingTexture.width) * 4;
+    let id = pixelBuffer[index] << 16 | pixelBuffer[index + 1] << 8 | pixelBuffer[index + 2];
+    if (id / offsetTimes < pickableObjectList.length) {
+      let result;
+      pickableObjectList.map(obj => {
+        if (obj.ID === id) {
+          result = obj.object;
+        }
+      });
+      // console.log(result)
+      if (result.name === 'miku') {
+        for (let i = 0; i < animationArray.length; ++i) {
+          if (animationArray[i].duration < 0) {
+            animationArray.splice(i, 1);
+            i--;
+          }
+        }
+        animationArray.push({ target: result, direction: new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5), duration: 1.0 });
+      }
+    } else {
+      console.log('no object picked');
+    }
+    pickingTexture.dispose();
   }
-  pickingTexture.dispose();
 }
 
 /***/ }),
@@ -1334,6 +1372,7 @@ uniform float shininess;
 uniform float opacity;
 uniform bool showMapTexture;
 uniform float time;
+uniform bool texScrolling;
 uniform sampler2D mapProj;
 varying vec4 texCoordProj;
 varying vec3 vNormalProj;
@@ -1373,7 +1412,9 @@ void main() {
   #ifdef USE_MAP
     if (showMapTexture) {
 			vec2 transformedvUv = vec2(vUv);
-			transformedvUv.x = mod(transformedvUv.x + time, 1.0);
+			if (texScrolling) {
+				transformedvUv.x = mod(transformedvUv.x + time, 1.0);
+			}
       vec4 texelColor = texture2D( map, transformedvUv );
       texelColor = mapTexelToLinear( texelColor );
       diffuseColor *= texelColor;

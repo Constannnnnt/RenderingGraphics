@@ -10,6 +10,7 @@ uniform float shininess;
 uniform float opacity;
 uniform bool showMapTexture;
 uniform float time;
+uniform bool texScrolling;
 uniform sampler2D mapProj;
 varying vec4 texCoordProj;
 varying vec3 vNormalProj;
@@ -49,7 +50,9 @@ void main() {
   #ifdef USE_MAP
     if (showMapTexture) {
 			vec2 transformedvUv = vec2(vUv);
-			transformedvUv.x = mod(transformedvUv.x + time, 1.0);
+			if (texScrolling) {
+				transformedvUv.x = mod(transformedvUv.x + time, 1.0);
+			}
       vec4 texelColor = texture2D( map, transformedvUv );
       texelColor = mapTexelToLinear( texelColor );
       diffuseColor *= texelColor;
