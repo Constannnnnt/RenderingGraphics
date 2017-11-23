@@ -543,7 +543,7 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
 
 var container, stats;
 var camera, scene, renderer;
-var controls, ambientLight, directionalLight, spotLight, pointLight;
+var controls, ambientLight, directionalLight, spotLight, pointLight, planeuniform;
 var miku, stage;
 window.particleEngine = null;
 
@@ -761,7 +761,7 @@ function init() {
   spotLight2.shadow.camera.near = 10;
   spotLight2.shadow.camera.far = 180;
 
-  let planeuniform = THREE.UniformsUtils.clone(shader.uniforms);
+  planeuniform = THREE.UniformsUtils.clone(shader.uniforms);
   planeuniform["diffuse"] = {
     type: 'c',
     value: new THREE.Color(0xffffff)
@@ -891,12 +891,12 @@ function initGUI() {
 
   let folder = gui.addFolder("Miku");
   let shadingConf = {
-    'shading': 'smooth shading'
+    'Shading': 'Smooth Shading'
   };
-  folder.add(shadingConf, 'shading', ['smooth shading', 'flat shading']).onChange(value => {
+  folder.add(shadingConf, 'Shading', ['Smooth Shading', 'Flat Shading']).onChange(value => {
     miku.traverse(node => {
       if (node instanceof THREE.Mesh) {
-        if (value == 'flat shading') {
+        if (value == 'Flat Shading') {
           if (node.material instanceof THREE.MeshPhongMaterial) {
             node.material.flatShading = true;
             node.material.needsUpdate = true;
@@ -921,7 +921,7 @@ function initGUI() {
     });
   });
 
-  folder = gui.addFolder("Directional light");
+  folder = gui.addFolder("Directional Light");
   let directionalLightConf = {
     visible: directionalLight.visible,
     color: directionalLight.color.getStyle()
@@ -934,7 +934,7 @@ function initGUI() {
   });
   // folder.open()
 
-  folder = gui.addFolder("Point light");
+  folder = gui.addFolder("Point Light");
   let pointLightConf = {
     visible: pointLight.visible,
     color: pointLight.color.getStyle(),
@@ -951,7 +951,7 @@ function initGUI() {
   });
   // folder.open()
 
-  folder = gui.addFolder("Spot light");
+  folder = gui.addFolder("Spot Light");
   let spotLightConf = {
     visible: spotLight.visible,
     color: spotLight.color.getStyle(),
@@ -965,6 +965,18 @@ function initGUI() {
   });
   folder.add(spotLightConf, 'castShadow').onChange(() => {
     spotLight.castShadow = spotLightConf['castShadow'];
+  });
+
+  folder = gui.addFolder("Projective Texture");
+  let ProjectiveTextureConf = {
+    blendingParam: planeuniform["blendingParam"].value,
+    showMapTexture: planeuniform["showMapTexture"].value
+  };
+  folder.add(ProjectiveTextureConf, 'blendingParam').min(0.0).max(1.0).step(0.1).onChange(value => {
+    planeuniform["blendingParam"].value = value;
+  });
+  folder.add(ProjectiveTextureConf, 'showMapTexture').onChange(value => {
+    planeuniform["showMapTexture"].value = value;
   });
   // folder.open()
 }
