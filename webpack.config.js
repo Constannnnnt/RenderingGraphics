@@ -24,5 +24,6 @@ module.exports = {
     // new BundleAnalyzerPlugin({
     //   analyzerMode: 'static'
     // })
-  ]
+  ],
+  devtool: 'source-map'
 }

@@ -8,5 +8,6 @@ void main() {
   }
   gl_FragColor = vColor;
 }
+`
 
 export default particleShaderFrag
