@@ -81,6 +81,11 @@ var SCREEN_HEIGHT = window.innerHeight;
 var NEAR = 1;
 var FAR = 2000;
 
+var explictFlatShade = false;
+var explictSmoothShade = true;
+var FlatShade = false;
+var SmoothShde = false;
+
 init();
 animate();
 
@@ -142,7 +147,7 @@ function init() {
   spotLight.penumbra = 0.08;
   spotLight.decay = 2;
   spotLight.distance = 400;
-  spotLight.shadow.bias = 0.0001;
+  // spotLight.shadow.bias = 0.0001
   spotLight.castShadow = true;
   spotLight.shadowDarkness = 1;
   spotLight.shadowCameraVisible = true;
@@ -198,7 +203,30 @@ function init() {
       object.traverse(function (node) {
         if (node instanceof THREE.Mesh) {
           node.castShadow = true;
+          if (explictSmoothShade) {
+            var geometry = new THREE.Geometry().fromBufferGeometry(node.geometry);
+            geometry.computeFaceNormals();
+            geometry.mergeVertices();
+            geometry.computeVertexNormals(true);
+            node.geometry = new THREE.BufferGeometry().fromGeometry(geometry);
+            node.material = new THREE.MeshPhongMaterial({
+              color: 'white',
+              shading: THREE.SmoothShading
+            });
+          } else if (explictFlatShade) {
+            var geometry = new THREE.Geometry().fromBufferGeometry(node.geometry);
+            geometry.computeFaceNormals();
+            geometry.mergeVertices();
+            geometry.computeVertexNormals(true);
+            node.geometry = new THREE.BufferGeometry().fromGeometry(geometry);
+            node.material = new THREE.MeshPhongMaterial({
+              color: 'white',
+              shading: THREE.FlatShading
+            });
+          }
+          if (SmoothShde) node.material.shading = THREE.SmoothShading;else if (FlatShade) mode.material.shading = THREE.FlatShading;
           node.receiveShadow = false;
+          console.log(node);
         }
       });
       scene.add(object);
