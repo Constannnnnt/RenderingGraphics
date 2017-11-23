@@ -90,6 +90,11 @@ var SCREEN_HEIGHT = window.innerHeight;
 var NEAR = 1;
 var FAR = 10000;
 
+var explictFlatShade = false;
+var explictSmoothShade = true;
+var FlatShade = false;
+var SmoothShde = false;
+
 init();
 animate();
 
@@ -119,6 +124,7 @@ function init() {
   controls.enablePan = true;
 
   // mirror reflector
+<<<<<<< HEAD
   // var verticalMirror = new THREE.Reflector(400, 350, {
   //   clipBias: 0.002,
   //   textureWidth: SCREEN_WIDTH * window.devicePixelRatio,
@@ -130,6 +136,20 @@ function init() {
   // verticalMirror.position.x = -20
   // verticalMirror.position.z = -128
   // scene.add(verticalMirror)
+=======
+  var verticalMirror = new THREE.Reflector(400, 350, {
+    clipBias: 0.001,
+    textureWidth: SCREEN_WIDTH * window.devicePixelRatio,
+    textureHeight: SCREEN_HEIGHT * window.devicePixelRatio,
+    color: 0x889999,
+    recursion: 1
+  });
+  verticalMirror.position.y = 50;
+  verticalMirror.position.x = -20;
+  verticalMirror.position.z = -128;
+  // verticalMirror.rotateX(Math.PI / 2)
+  scene.add(verticalMirror);
+>>>>>>> 5306480983badcca36547712d9f7f53c676b039b
 
   // lights
   ambientLight = new THREE.AmbientLight(0xcccccc, 0.4);
@@ -161,7 +181,7 @@ function init() {
   spotLight.penumbra = 0.08;
   spotLight.decay = 2;
   spotLight.distance = 400;
-  spotLight.shadow.bias = 0.0001;
+  // spotLight.shadow.bias = 0.0001
   spotLight.castShadow = true;
   spotLight.shadow.mapSize.width = SHADOW_MAP_WIDTH;
   spotLight.shadow.mapSize.height = SHADOW_MAP_HEIGHT;
@@ -211,12 +231,41 @@ function init() {
       object.traverse(function (node) {
         if (node instanceof THREE.Mesh) {
           node.castShadow = true;
+<<<<<<< HEAD
           // node.receiveShadow = true;
+=======
+          if (explictSmoothShade) {
+            var geometry = new THREE.Geometry().fromBufferGeometry(node.geometry);
+            geometry.computeFaceNormals();
+            geometry.mergeVertices();
+            geometry.computeVertexNormals(true);
+            node.geometry = new THREE.BufferGeometry().fromGeometry(geometry);
+            node.material = new THREE.MeshPhongMaterial({
+              color: 'white',
+              shading: THREE.SmoothShading
+            });
+          } else if (explictFlatShade) {
+            var geometry = new THREE.Geometry().fromBufferGeometry(node.geometry);
+            console.log(geometry);
+            geometry.computeFaceNormals();
+            geometry.mergeVertices();
+            geometry.computeVertexNormals(true);
+            node.geometry = new THREE.BufferGeometry().fromGeometry(geometry);
+            node.material = new THREE.MeshPhongMaterial({
+              color: 'white',
+              shading: THREE.FlatShading
+            });
+          }
+          if (SmoothShde) node.material.shading = THREE.SmoothShading;else if (FlatShade) mode.material.shading = THREE.FlatShading;
+          node.receiveShadow = false;
+          console.log(node);
+>>>>>>> 5306480983badcca36547712d9f7f53c676b039b
         }
       });
       scene.add(object);
 
       spotLight.target = object;
+      verticalMirror.target = object;
 
       controls.target.copy(object.position);
       controls.update();
@@ -250,6 +299,7 @@ function init() {
     });
   });
 
+<<<<<<< HEAD
   // projective texturing
   // window.projLight = new THREE.SpotLight(0xffff00, 3.0, 0.0, false)
   // projLight.position.set(300, 800, 500)
@@ -289,6 +339,28 @@ function init() {
   //     console.error('An error happened')
   //   }
   // )
+=======
+  var objLoader = new THREE.OBJLoader();
+  objLoader.setPath('../models/stage/');
+  objLoader.load('stage.obj', function (object) {
+    object.position.y -= 123.8;
+    object.scale.x = 20;
+    object.scale.y = 20;
+    object.scale.z = 20;
+    object.traverse(function (node) {
+      if (node instanceof THREE.Mesh) {
+        node.castShadow = false;
+        node.receiveShadow = true;
+      }
+    });
+    scene.add(object);
+    // console.log('stage loading')
+  }, xhr => {
+    // console.log(xhr)
+  }, xhr => {
+    console.log(xhr);
+  });
+>>>>>>> 5306480983badcca36547712d9f7f53c676b039b
 
   window.addEventListener('resize', onWindowResize, false);
 }

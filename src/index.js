@@ -16,6 +16,11 @@ var SCREEN_HEIGHT = window.innerHeight
 var NEAR = 1
 var FAR = 10000
 
+var explictFlatShade = false
+var explictSmoothShade = true
+var FlatShade = false
+var SmoothShde = false
+
 init()
 animate()
 
@@ -87,7 +92,7 @@ function init() {
   spotLight.penumbra = 0.08
   spotLight.decay = 2
   spotLight.distance = 400
-  spotLight.shadow.bias = 0.0001
+  // spotLight.shadow.bias = 0.0001
   spotLight.castShadow = true
   spotLight.shadow.mapSize.width = SHADOW_MAP_WIDTH
   spotLight.shadow.mapSize.height = SHADOW_MAP_HEIGHT
@@ -136,13 +141,40 @@ function init() {
       object.position.x = -25
       object.traverse(function (node) {
         if (node instanceof THREE.Mesh) {
-          node.castShadow = true;
-          // node.receiveShadow = true;
+          node.castShadow = true
+          if (explictSmoothShade) {
+            var geometry = new THREE.Geometry().fromBufferGeometry(node.geometry)
+            geometry.computeFaceNormals()
+            geometry.mergeVertices()
+            geometry.computeVertexNormals(true)
+            node.geometry = new THREE.BufferGeometry().fromGeometry(geometry)
+            node.material = new THREE.MeshPhongMaterial({
+              color: 'white',
+              shading: THREE.SmoothShading
+            })
+          } else if (explictFlatShade) {
+            var geometry = new THREE.Geometry().fromBufferGeometry(node.geometry)
+            console.log(geometry)
+            geometry.computeFaceNormals()
+            geometry.mergeVertices()
+            geometry.computeVertexNormals(true)
+            node.geometry = new THREE.BufferGeometry().fromGeometry(geometry)
+            node.material = new THREE.MeshPhongMaterial({
+              color: 'white',
+              shading: THREE.FlatShading
+            })
+          }
+          if (SmoothShde) node.material.shading = THREE.SmoothShading
+          else if (FlatShade) mode.material.shading = THREE.FlatShading
+          node.receiveShadow = false
+          console.log(node)
         }
       });
       scene.add(object)
 
       spotLight.target = object
+      verticalMirror.target = object
+
 
       controls.target.copy(object.position)
       controls.update()
