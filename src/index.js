@@ -185,49 +185,15 @@ function init() {
     })
   })
 
-  // projective texturing
-  // window.projLight = new THREE.SpotLight(0xffff00, 3.0, 0.0, false)
-  // projLight.position.set(300, 800, 500)
-  // projLight.target.position.set(0, 0, 0)
-  // projLight.angle = Math.PI / 20
-  // projLight.exponent = 50
-  // scene.add(projLight)
-
   // var spotLightHelper = new THREE.SpotLightHelper(projLight)
   // scene.add(spotLightHelper)
 
-  let backboardTexture = textureLoader.load("../images/huaji.png")
-  // textureLoader.load(
-  //   "../images/huaji.png",
-  //   function (textureProj) {
-  //     let shader = THREE.ShaderLib["phong"]
-
-  //     window.uniforms = THREE.UniformsUtils.clone(shader.uniforms)
-  //     uniforms["lightIntensity"] = {"value": 0.3}
-  //     uniforms["textureSampler"] = {"type": "t", "value": backboardTexture}
-
-  //     let parameters = {
-  //       fragmentShader: projTexShader2.fragment,
-  //       vertexShader: projTexShader2.vertex,
-  //       uniforms: uniforms,
-  //       lights: true
-  //     }
-
-  //     let mesh = new THREE.Mesh(new THREE.CubeGeometry(1000, 600, 0.001, 1, 1, 1), new THREE.ShaderMaterial(parameters))
-
-  //     scene.add(mesh)
-  //   },
-  //   function (xhr) {
-  //     // console.log((xhr.loaded / xhr.total * 100) + '% loaded')
-  //   },
-  //   function (xhr) {
-  //     console.error('An error happened')
-  //   }
-  // )
+  let huajiTexture = textureLoader.load("../images/huaji.png")
+  let backboardTex = textureLoader.load("../images/backboard.jpg")
 
   window.shader = THREE.ShaderLib["phong"]
   window.uniforms = THREE.UniformsUtils.clone(shader.uniforms)
-  uniforms["map"].value = backboardTexture
+  uniforms["map"].value = huajiTexture
   uniforms["showMapTexture"] = {
     'type': 'b',
     'value': true
@@ -261,6 +227,69 @@ function init() {
   scene.add(box)
 
   particleSystem('clouds')
+
+  // projective texture mapping
+  let spotLight2 = new THREE.SpotLight(0xffff00, 0.3)
+  spotLight2.position.set(-70, 95, 100)
+  spotLight2.angle = Math.PI / 8
+  spotLight2.penumbra = 0.08
+  spotLight2.decay = 2
+  spotLight2.distance = 400
+  spotLight2.castShadow = true
+  spotLight2.shadow.mapSize.width = SHADOW_MAP_WIDTH
+  spotLight2.shadow.mapSize.height = SHADOW_MAP_HEIGHT
+  spotLight2.shadow.camera.near = 10
+  spotLight2.shadow.camera.far = 180
+
+  let planeuniform = THREE.UniformsUtils.clone(shader.uniforms)
+  planeuniform["diffuse"] = {
+    type: 'c',
+    value: new THREE.Color(0xffffff)
+  }
+  planeuniform["showMapTexture"] = {
+    type: 'b',
+    value: true
+  }
+  planeuniform["blendingParam"] = {
+    type: 'f',
+    value: 0.5
+  }
+  planeuniform["map"] = {
+    value: backboardTex
+  }
+  planeuniform[ "mapProj"] = {
+    "type": "t", "value": huajiTexture
+  };
+  planeuniform[ "textureMatrixProj"] = {
+    "type": "m4", "value": new THREE.Matrix4()
+  };
+  planeuniform["spotLightPosition"] = {
+    value: spotLight2.position
+  }
+  planeuniform['spotLightColor'] = {
+    value: new THREE.Color(0xffffff)
+  }
+  let planegeo = new THREE.PlaneBufferGeometry(200, 200)
+  let planemtl = new THREE.ShaderMaterial({
+    fragmentShader: phong.frag,
+    vertexShader: phong.vert,
+    uniforms: planeuniform,
+    lights: true
+  })
+  let plane = new THREE.Mesh(planegeo, planemtl)
+  plane.position.set(-30, 0, -130)
+  scene.add(plane)
+
+  let targetObject = new THREE.Object3D()
+  targetObject.position.set(-30, 0, -130)
+  spotLight2.target = targetObject
+  targetObject.updateMatrixWorld()
+  scene.add(spotLight2)
+  scene.add(targetObject)
+
+  let spotlightHelper = new THREE.SpotLightHelper(spotLight2)
+  scene.add(spotlightHelper)
+  plane.material.uniforms.textureMatrixProj.value = makeProjectiveMatrixForLight(spotLight2)
 
   window.addEventListener('resize', onWindowResize, false)
 }
@@ -302,10 +331,12 @@ function makeProjectiveMatrixForLight(l) {
 
   lightCamera.matrixWorldInverse.getInverse(lightCamera.matrixWorld)
 
-  lightMatrix.set(0.5, 0.0, 0.0, 0.5,
+  lightMatrix.set(
+    0.5, 0.0, 0.0, 0.5,
     0.0, 0.5, 0.0, 0.5,
     0.0, 0.0, 0.5, 0.5,
-    0.0, 0.0, 0.0, 1.0)
+    0.0, 0.0, 0.0, 1.0
+  )
 
   lightMatrix.multiply(lightCamera.projectionMatrix)
   lightMatrix.multiply(lightCamera.matrixWorldInverse)
