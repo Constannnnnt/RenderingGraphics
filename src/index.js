@@ -1,18 +1,19 @@
 // import * as THREE from 'three'
 import phong from './shaders/phong.js'
+
 import depthShader from './shaders/depth.js'
 import { ParticleEngine } from './ParticleEngine/ParticleEngine.js'
 import { Examples } from './ParticleEngine/ParticleEngineExamples.js'
 import { debug, inspect } from 'util';
-
 var container, stats
 var camera, scene, renderer
-var controls, ambientLight, directionalLight, spotLight, pointLight, planeuniform
+var controls, ambientLight, directionalLight, spotLight, pointLight, planeuniform, spotLight2
 var miku, stage, floor
 var depthTarget, postCamera, postScene, renderDepthFlag = false, depthuniform
 
 window.pickableObjectList = []
 window.particleEngine = null
+var spotlightHelper2, spotLightHelper, pointLightHelper
 
 // shadowMap variable
 var SHADOW_MAP_WIDTH = 1024
@@ -43,6 +44,7 @@ function init() {
   renderer.setPixelRatio(window.devicePixelRatio)
   renderer.setSize(window.innerWidth, window.innerHeight)
   renderer.shadowMap.enabled = true
+  renderer.shadowMap.needsUpdate = true
   renderer.shadowMap.type = THREE.PCFShadowMap // PCF shadowMap now
   container.appendChild(renderer.domElement)
 
@@ -74,7 +76,10 @@ function init() {
   pointLight.castShadow = true
   scene.add(pointLight)
   var sphereSize = 1;
-  var pointLightHelper = new THREE.PointLightHelper(pointLight, sphereSize);
+
+  pointLightHelper = new THREE.PointLightHelper(pointLight, sphereSize);
+  pointLightHelper.visible = false
+
   scene.add(pointLightHelper);
 
   // spotlight
@@ -178,6 +183,11 @@ function init() {
       console.log(xhr)
     })
   })
+
+  spotLightHelper = new THREE.SpotLightHelper(spotLight)
+  spotLightHelper.visible = false
+  scene.add(spotLightHelper)
+
   let huajiTexture = textureLoader.load("../images/huaji.png")
   let backboardTex = textureLoader.load("../images/backboard.jpg")
 
@@ -223,7 +233,7 @@ function init() {
   particleSystem('clouds')
 
   // projective texture mapping
-  let spotLight2 = new THREE.SpotLight(0xffff00, 0.3)
+  spotLight2 = new THREE.SpotLight(0xffff00, 0.3)
   spotLight2.position.set(-70, 95, 100)
   spotLight2.angle = Math.PI / 8
   spotLight2.penumbra = 0.08
@@ -252,7 +262,8 @@ function init() {
     value: backboardTex
   }
   planeuniform["mapProj"] = {
-    "type": "t", "value": huajiTexture
+    "type": "t",
+    "value": huajiTexture
   };
   planeuniform["textureMatrixProj"] = {
     "type": "m4",
@@ -282,8 +293,9 @@ function init() {
   scene.add(spotLight2)
   scene.add(targetObject)
 
-  // let spotlightHelper = new THREE.SpotLightHelper(spotLight2)
-  // scene.add(spotlightHelper)
+  spotlightHelper2 = new THREE.SpotLightHelper(spotLight2)
+  spotlightHelper2.visible = false
+  scene.add(spotlightHelper2)
   plane.material.uniforms.textureMatrixProj.value = makeProjectiveMatrixForLight(spotLight2)
 
   initDepth()
@@ -292,19 +304,20 @@ function init() {
   window.addEventListener('mouseup', pick, false)
 
   //mirror reflector
-  // var verticalMirror = new THREE.Reflector(400, 350, {
-  //   clipBias: 0.002,
-  //   textureWidth: SCREEN_WIDTH * window.devicePixelRatio,
-  //   textureHeight: SCREEN_HEIGHT * window.devicePixelRatio,
-  //   color: 0x889999,
-  //   recursion: 1
-  // })
-  // verticalMirror.position.y = 50
-  // verticalMirror.position.x = -260
-  // verticalMirror.position.z = -70
-  // verticalMirror.rotateY(Math.PI / 2)
-  // // verticalMirror.lookAtPosition.add(-camera.matrixWorld.position)
-  // scene.add(verticalMirror)
+  verticalMirror = new THREE.Reflector(400, 350, {
+    clipBias: 0.002,
+    textureWidth: SCREEN_WIDTH * window.devicePixelRatio,
+    textureHeight: SCREEN_HEIGHT * window.devicePixelRatio,
+    color: 0x889999,
+    recursion: 1
+  })
+  verticalMirror.position.y = 50
+  verticalMirror.position.x = -260
+  verticalMirror.position.z = -70
+  verticalMirror.rotateY(Math.PI / 2)
+  verticalMirror.visible = false
+  // verticalMirror.lookAtPosition.add(-camera.matrixWorld.position)
+  scene.add(verticalMirror)
 }
 
 function onWindowResize() {
@@ -314,6 +327,7 @@ function onWindowResize() {
 }
 
 var lastTime = null
+
 function animate(time) {
   if (!lastTime) {
     lastTime = time
@@ -378,13 +392,13 @@ function initGUI() {
 
   let folder = gui.addFolder("Miku")
   let shadingConf = {
-    'shading': 'smooth shading'
+    'Shading': 'Smooth Shading'
   }
-  folder.add(shadingConf, 'shading', ['smooth shading', 'flat shading'])
+  folder.add(shadingConf, 'Shading', ['Smooth Shading', 'Flat Shading'])
     .onChange((value) => {
       miku.traverse((node) => {
         if (node instanceof THREE.Mesh) {
-          if (value == 'flat shading') {
+          if (value == 'Flat Shading') {
             if (node.material instanceof THREE.MeshPhongMaterial) {
               node.material.flatShading = true
               node.material.needsUpdate = true
@@ -409,7 +423,7 @@ function initGUI() {
       })
     })
 
-  folder = gui.addFolder("Directional light")
+  folder = gui.addFolder("Directional Light")
   let directionalLightConf = {
     visible: directionalLight.visible,
     color: directionalLight.color.getStyle()
@@ -422,7 +436,7 @@ function initGUI() {
   })
   // folder.open()
 
-  folder = gui.addFolder("Point light")
+  folder = gui.addFolder("Point Light")
   let pointLightConf = {
     visible: pointLight.visible,
     color: pointLight.color.getStyle(),
@@ -439,7 +453,7 @@ function initGUI() {
   })
   // folder.open()
 
-  folder = gui.addFolder("Spot light")
+  folder = gui.addFolder("Spot Light")
   let spotLightConf = {
     visible: spotLight.visible,
     color: spotLight.color.getStyle(),
@@ -453,6 +467,98 @@ function initGUI() {
   })
   folder.add(spotLightConf, 'castShadow').onChange(() => {
     spotLight.castShadow = spotLightConf['castShadow']
+  })
+
+  /*
+  Type: Value
+  BasicShadowMap: 0
+  PCFShadowMap: 1
+  PCFSoftShadowMap: 2
+  */
+  folder = gui.addFolder("ShadowMap")
+  let ShadowMapConf = {
+    ShadowMapType: renderer.shadowMap.type,
+  }
+  folder.add(ShadowMapConf, 'ShadowMapType').min(0).max(2).step(1).onChange((value) => {
+    renderer.shadowMap.type = value
+    renderer.clearTarget(spotLight.shadow.map)
+    miku.traverse((node) => {
+      if (node instanceof THREE.Mesh) {
+        if (node.material instanceof THREE.MeshPhongMaterial) {
+          node.material.needsUpdate = true
+        } else {
+          for (let k in node.material) {
+            node.material[k].needsUpdate = true
+          }
+        }
+      } else {
+        if (node.material instanceof THREE.MeshPhongMaterial) {
+          node.material.needsUpdate = true
+        } else {
+          for (let k in node.material) {
+            node.material[k].needsUpdate = true
+          }
+        }
+      }
+    })
+    stage.traverse((node) => {
+      if (node instanceof THREE.Mesh) {
+        if (node.material instanceof THREE.MeshPhongMaterial) {
+          node.material.needsUpdate = true
+        } else {
+          for (let k in node.material) {
+            node.material[k].needsUpdate = true
+          }
+        }
+      } else {
+        if (node.material instanceof THREE.MeshPhongMaterial) {
+          node.material.needsUpdate = true
+        } else {
+          for (let k in node.material) {
+            node.material[k].needsUpdate = true
+          }
+        }
+      }
+    })
+  })
+
+  folder = gui.addFolder("Projective Texture")
+  let ProjectiveTextureConf = {
+    blendingParam: planeuniform["blendingParam"].value,
+    showMapTexture: planeuniform["showMapTexture"].value
+  }
+  folder.add(ProjectiveTextureConf, 'blendingParam').min(0.0).max(1.0).step(0.1).onChange((value) => {
+    planeuniform["blendingParam"].value = value
+  })
+  folder.add(ProjectiveTextureConf, 'showMapTexture').onChange((value) => {
+    planeuniform["showMapTexture"].value = value
+  })
+
+  folder = gui.addFolder("Mirror")
+  let MirrorConf = {
+    mirror: verticalMirror.visible
+  }
+  folder.add(MirrorConf, 'mirror').onChange((value) => {
+    verticalMirror.visible = value
+    pointLight.visible = (!value)
+    spotLight.visible = (!value)
+    directionalLight.visible = (!value)
+  })
+
+  folder = gui.addFolder("Helper")
+  let HelperConf = {
+    spotLightHelper1: spotLightHelper.visible,
+    spotLightHelper2: spotlightHelper2.visible,
+    pointLightHelper: pointLightHelper.visible
+  }
+  folder.add(HelperConf, 'spotLightHelper1').onChange((value) => {
+    spotLightHelper.visible = value
+  })
+  folder.add(HelperConf, 'spotLightHelper2').onChange((value) => {
+    spotlightHelper2.visible = value
+  })
+  folder.add(HelperConf, 'pointLightHelper').onChange((value) => {
+    pointLightHelper.visible = value
   })
   // folder.open()
 
