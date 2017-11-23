@@ -80,6 +80,16 @@ var container, stats;
 var camera, scene, renderer;
 var controls, ambientLight, directionalLight, spotLight;
 
+// shadowMap variable
+var SHADOW_MAP_WIDTH = 1024;
+var SHADOW_MAP_HEIGHT = 1024;
+
+// screen variable
+var SCREEN_WIDTH = window.innerWidth;
+var SCREEN_HEIGHT = window.innerHeight;
+var NEAR = 1;
+var FAR = 2000;
+
 init();
 animate();
 
@@ -90,13 +100,20 @@ function init() {
   // canvas
   container = document.createElement('div');
   document.body.appendChild(container);
+<<<<<<< HEAD
   camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 10000);
   camera.position.z = 1000;
+=======
+  camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, NEAR, FAR);
+  camera.position.z = 250;
+>>>>>>> 6d7c8ea673a9ce46cb18e783dd2bbb69b4b6f384
   scene.add(camera);
 
   renderer = new THREE.WebGLRenderer();
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFShadowMap; // PCF shadowMap now
   container.appendChild(renderer.domElement);
 
   // control
@@ -105,6 +122,19 @@ function init() {
   controls.minDistance = 10;
   controls.maxDistance = 800;
   controls.enablePan = true;
+
+  // mirror reflector
+  var verticalMirror = new THREE.Reflector(400, 350, {
+    clipBias: 0.002,
+    textureWidth: SCREEN_WIDTH * window.devicePixelRatio,
+    textureHeight: SCREEN_HEIGHT * window.devicePixelRatio,
+    color: 0x889999,
+    recursion: 1
+  });
+  verticalMirror.position.y = 50;
+  verticalMirror.position.x = -20;
+  verticalMirror.position.z = -128;
+  scene.add(verticalMirror);
 
   // lights
   ambientLight = new THREE.AmbientLight(0xcccccc, 0.4);
@@ -125,11 +155,22 @@ function init() {
   spotLight.penumbra = 0.08;
   spotLight.decay = 2;
   spotLight.distance = 400;
+<<<<<<< HEAD
   // spotLight.castShadow = true
   // spotLight.shadow.mapSize.width = 1024
   // spotLight.shadow.mapSize.height = 1024
   // spotLight.shadow.camera.near = 10
   // spotLight.shadow.camera.far = 200
+=======
+  spotLight.shadow.bias = 0.0001;
+  spotLight.castShadow = true;
+  spotLight.shadowDarkness = 1;
+  spotLight.shadowCameraVisible = true;
+  spotLight.shadow.mapSize.width = SHADOW_MAP_WIDTH;
+  spotLight.shadow.mapSize.height = SHADOW_MAP_HEIGHT;
+  spotLight.shadow.camera.near = 10;
+  spotLight.shadow.camera.far = 180;
+>>>>>>> 6d7c8ea673a9ce46cb18e783dd2bbb69b4b6f384
   scene.add(spotLight);
 
   // floor texture
@@ -145,10 +186,22 @@ function init() {
     //  var material = new THREE.MeshBasicMaterial( {color: 0x00ff00} )
     let cube = new THREE.Mesh(geometry, material);
     cube.position.copy(new THREE.Vector3(-27, -94, 5));
+    cube.castShadow = false;
+    cube.receiveShadow = true;
     scene.add(cube);
+<<<<<<< HEAD
   }, function (xhr) {
     // console.log((xhr.loaded / xhr.total * 100) + '% loaded')
   }, function (xhr) {
+=======
+  },
+  // Function called when download progresses
+  function (xhr) {
+    // console.log((xhr.loaded / xhr.total * 100) + '% loaded')
+  },
+  // Function called when download errors
+  function (xhr) {
+>>>>>>> 6d7c8ea673a9ce46cb18e783dd2bbb69b4b6f384
     console.error('An error happened');
   });
 
@@ -164,6 +217,11 @@ function init() {
     objLoader.load('Miku.obj', function (object) {
       object.position.y = -95;
       object.position.x = -25;
+      object.traverse(function (node) {
+        if (node instanceof THREE.Mesh) {
+          node.castShadow = true;
+        }
+      });
       scene.add(object);
 
       spotLight.target = object;
@@ -195,6 +253,7 @@ function init() {
     });
   });
 
+<<<<<<< HEAD
   // projective texturing
   // window.projLight = new THREE.SpotLight(0xffff00, 3.0, 0.0, false)
   // projLight.position.set(300, 800, 500)
@@ -234,6 +293,27 @@ function init() {
   //     console.error('An error happened')
   //   }
   // )
+=======
+  var objLoader = new THREE.OBJLoader();
+  objLoader.setPath('../models/stage/');
+  objLoader.load('stage.obj', function (object) {
+    object.position.y -= 123.8;
+    object.scale.x = 20;
+    object.scale.y = 20;
+    object.scale.z = 20;
+    object.traverse(function (node) {
+      if (node instanceof THREE.Mesh) {
+        node.receiveShadow = true;
+      }
+    });
+    scene.add(object);
+    // console.log('stage loading')
+  }, xhr => {
+    // console.log(xhr)
+  }, xhr => {
+    console.log(xhr);
+  });
+>>>>>>> 6d7c8ea673a9ce46cb18e783dd2bbb69b4b6f384
 
   window.addEventListener('resize', onWindowResize, false);
 }

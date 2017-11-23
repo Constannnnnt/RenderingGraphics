@@ -6,6 +6,16 @@ var container, stats
 var camera, scene, renderer
 var controls, ambientLight, directionalLight, spotLight
 
+// shadowMap variable
+var SHADOW_MAP_WIDTH = 1024
+var SHADOW_MAP_HEIGHT = 1024
+
+// screen variable
+var SCREEN_WIDTH = window.innerWidth
+var SCREEN_HEIGHT = window.innerHeight
+var NEAR = 1
+var FAR = 10000
+
 init()
 animate()
 
@@ -16,13 +26,15 @@ function init() {
   // canvas
   container = document.createElement('div')
   document.body.appendChild(container)
-  camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 10000)
-  camera.position.z = 1000
+  camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, NEAR, FAR)
+  camera.position.z = 250
   scene.add(camera)
 
   renderer = new THREE.WebGLRenderer()
   renderer.setPixelRatio(window.devicePixelRatio)
   renderer.setSize(window.innerWidth, window.innerHeight)
+  renderer.shadowMap.enabled = true
+  renderer.shadowMap.type = THREE.PCFShadowMap // PCF shadowMap now
   container.appendChild(renderer.domElement)
 
   // control
@@ -31,6 +43,19 @@ function init() {
   controls.minDistance = 10
   controls.maxDistance = 800
   controls.enablePan = true
+
+  // mirror reflector
+  var verticalMirror = new THREE.Reflector(400, 350, {
+    clipBias: 0.002,
+    textureWidth: SCREEN_WIDTH * window.devicePixelRatio,
+    textureHeight: SCREEN_HEIGHT * window.devicePixelRatio,
+    color: 0x889999,
+    recursion: 1
+  })
+  verticalMirror.position.y = 50
+  verticalMirror.position.x = -20
+  verticalMirror.position.z = -128
+  scene.add(verticalMirror)
 
   // lights
   ambientLight = new THREE.AmbientLight(0xcccccc, 0.4)
@@ -51,11 +76,14 @@ function init() {
   spotLight.penumbra = 0.08
   spotLight.decay = 2
   spotLight.distance = 400
-  // spotLight.castShadow = true
-  // spotLight.shadow.mapSize.width = 1024
-  // spotLight.shadow.mapSize.height = 1024
-  // spotLight.shadow.camera.near = 10
-  // spotLight.shadow.camera.far = 200
+  spotLight.shadow.bias = 0.0001
+  spotLight.castShadow = true
+  spotLight.shadowDarkness = 1
+  spotLight.shadowCameraVisible = true
+  spotLight.shadow.mapSize.width = SHADOW_MAP_WIDTH
+  spotLight.shadow.mapSize.height = SHADOW_MAP_HEIGHT
+  spotLight.shadow.camera.near = 10
+  spotLight.shadow.camera.far = 180
   scene.add(spotLight)
 
   // floor texture
@@ -73,6 +101,8 @@ function init() {
       //  var material = new THREE.MeshBasicMaterial( {color: 0x00ff00} )
       let cube = new THREE.Mesh(geometry, material)
       cube.position.copy(new THREE.Vector3(-27, -94, 5))
+      cube.castShadow = false
+      cube.receiveShadow = true
       scene.add(cube)
     },
     function (xhr) {
@@ -93,8 +123,13 @@ function init() {
     objLoader.setMaterials(materials)
     objLoader.setPath('../models/Miku/')
     objLoader.load('Miku.obj', function (object) {
-      object.position.y = - 95
-      object.position.x = - 25
+      object.position.y = -95
+      object.position.x = -25
+      object.traverse(function (node) {
+        if (node instanceof THREE.Mesh) {
+          node.castShadow = true;
+        }
+      });
       scene.add(object)
 
       spotLight.target = object
@@ -110,8 +145,12 @@ function init() {
         object.scale.x = 20
         object.scale.y = 20
         object.scale.z = 20
+        object.traverse(function (node) {
+          if (node instanceof THREE.Mesh) {
+            node.receiveShadow = true;
+          }
+        });
         scene.add(object)
-        // console.log('stage loading')
 
         initGUI()
       }, (xhr) => {
