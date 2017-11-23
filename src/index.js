@@ -147,6 +147,7 @@ function init() {
             })
           } else if (explictFlatShade) {
             var geometry = new THREE.Geometry().fromBufferGeometry(node.geometry)
+            console.log(geometry)
             geometry.computeFaceNormals()
             geometry.mergeVertices()
             geometry.computeVertexNormals(true)
