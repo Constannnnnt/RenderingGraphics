@@ -119,19 +119,6 @@ function init() {
   controls.maxDistance = 800;
   controls.enablePan = true;
 
-  // mirror reflector
-  // var verticalMirror = new THREE.Reflector(400, 350, {
-  //   clipBias: 0.002,
-  //   textureWidth: SCREEN_WIDTH * window.devicePixelRatio,
-  //   textureHeight: SCREEN_HEIGHT * window.devicePixelRatio,
-  //   color: 0x889999,
-  //   recursion: 1
-  // })
-  // verticalMirror.position.y = 50
-  // verticalMirror.position.x = -20
-  // verticalMirror.position.z = -128
-  // scene.add(verticalMirror)
-
   // lights
   ambientLight = new THREE.AmbientLight(0xcccccc, 0.4);
   scene.add(ambientLight);
@@ -157,6 +144,7 @@ function init() {
 
   // spotlight
   spotLight = new THREE.SpotLight(0xffff00, 1);
+  window.t = spotLight;
   spotLight.position.set(5, 95, 100);
   spotLight.angle = Math.PI / 8;
   spotLight.penumbra = 0.08;
@@ -177,7 +165,7 @@ function init() {
       map: texture,
       blending: THREE.AdditiveBlending,
       transparent: true,
-      opacity: 0.5
+      opacity: 0.3
     });
     var geometry = new THREE.BoxGeometry(387, 0.0001, 266);
     //  var material = new THREE.MeshBasicMaterial( {color: 0x00ff00} )
@@ -213,9 +201,9 @@ function init() {
       miku = object;
       scene.add(object);
 
-      spotLight.target = object;
       // verticalMirror.target = object
-
+      spotLight.target = object;
+      scene.add(spotLight.target);
 
       controls.target.copy(object.position);
       controls.update();
@@ -325,7 +313,81 @@ function init() {
   box.position.set(0, -50, 0);
   scene.add(box);
 
+  let spotLight2 = new THREE.SpotLight(0xffff00, 0.3);
+  spotLight2.position.set(-70, 95, 100);
+  spotLight2.angle = Math.PI / 8;
+  spotLight2.penumbra = 0.08;
+  spotLight2.decay = 2;
+  spotLight2.distance = 400;
+  spotLight2.castShadow = true;
+  spotLight2.shadow.mapSize.width = SHADOW_MAP_WIDTH;
+  spotLight2.shadow.mapSize.height = SHADOW_MAP_HEIGHT;
+  spotLight2.shadow.camera.near = 10;
+  spotLight2.shadow.camera.far = 180;
+
+  let planeuniform = THREE.UniformsUtils.clone(shader.uniforms);
+  planeuniform["diffuse"] = {
+    type: 'c',
+    value: new THREE.Color(0xffffff)
+  };
+  planeuniform["showMapTexture"] = {
+    value: false
+  };
+  planeuniform["map"] = {
+    value: null
+  };
+  planeuniform["mapProj"] = {
+    "type": "t",
+    "value": backboardTexture
+  };
+  planeuniform["textureMatrixProj"] = {
+    "type": "m4",
+    "value": new THREE.Matrix4()
+  };
+  planeuniform["spotLightPosition"] = {
+    value: spotLight2.position
+  };
+  planeuniform['spotLightColor'] = {
+    value: new THREE.Color(0xffffff)
+  };
+  let planegeo = new THREE.PlaneBufferGeometry(200, 200);
+  let planemtl = new THREE.ShaderMaterial({
+    fragmentShader: __WEBPACK_IMPORTED_MODULE_0__shaders_phong_js__["a" /* default */].frag,
+    vertexShader: __WEBPACK_IMPORTED_MODULE_0__shaders_phong_js__["a" /* default */].vert,
+    uniforms: planeuniform,
+    lights: true
+  });
+  let plane = new THREE.Mesh(planegeo, planemtl);
+  plane.position.set(-30, 0, -130);
+  scene.add(plane);
+
+  let targetObject = new THREE.Object3D();
+  targetObject.position.set(-50, 0, -130);
+  spotLight2.target = targetObject;
+  targetObject.updateMatrixWorld();
+  scene.add(spotLight2);
+  scene.add(targetObject);
+
+  // let spotlightHelper = new THREE.SpotLightHelper(spotLight2)
+  // scene.add(spotlightHelper)
+  plane.material.uniforms.textureMatrixProj.value = makeProjectiveMatrixForLight(spotLight2);
+
   window.addEventListener('resize', onWindowResize, false);
+
+  //mirror reflector
+  var verticalMirror = new THREE.Reflector(400, 350, {
+    clipBias: 0.002,
+    textureWidth: SCREEN_WIDTH * window.devicePixelRatio,
+    textureHeight: SCREEN_HEIGHT * window.devicePixelRatio,
+    color: 0x889999,
+    recursion: 1
+  });
+  verticalMirror.position.y = 50;
+  verticalMirror.position.x = -260;
+  verticalMirror.position.z = -70;
+  verticalMirror.rotateY(Math.PI / 2);
+  // verticalMirror.lookAtPosition.add(-camera.matrixWorld.position)
+  scene.add(verticalMirror);
 }
 
 function onWindowResize() {
@@ -374,7 +436,9 @@ function initGUI() {
   // gui.add(API, 'show directional light').onChange(function () {
   //   directionalLight.visible = API['show directional light']
   // })
-  let gui = new dat.GUI({ width: '300px' });
+  let gui = new dat.GUI({
+    width: '300px'
+  });
 
   let folder = gui.addFolder("Miku");
   let shadingConf = {
@@ -473,6 +537,12 @@ uniform float shininess;
 uniform float opacity;
 uniform bool showMapTexture;
 uniform float time;
+uniform sampler2D mapProj;
+varying vec4 texCoordProj;
+varying vec3 vNormalProj;
+varying vec3 vViewPositionProj;
+uniform vec3 spotLightPosition;
+uniform vec3 spotLightColor;
 #include <common>
 #include <packing>
 #include <dithering_pars_fragment>
@@ -528,6 +598,11 @@ void main() {
 	vec3 outgoingLight = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse + reflectedLight.directSpecular + reflectedLight.indirectSpecular + totalEmissiveRadiance;
 	#include <envmap_fragment>
 	gl_FragColor = vec4( outgoingLight, diffuseColor.a );
+
+	vec4 texColorProj = texCoordProj.q < 0.0 ? vec4(0.0, 0.0, 0.0, 0.0) : texture2DProj( mapProj, texCoordProj); // for projective texturing
+
+	gl_FragColor.xyz += texColorProj.xyz;
+
 	#include <tonemapping_fragment>
 	#include <encodings_fragment>
 	#include <fog_fragment>
@@ -540,6 +615,10 @@ phong.vert = `
 #define PHONG
 #define USE_MAP
 varying vec3 vViewPosition;
+uniform mat4 textureMatrixProj;
+varying vec4 texCoordProj;
+varying vec3 vNormalProj;
+varying vec3 vViewPositionProj;
 #ifndef FLAT_SHADED
 	varying vec3 vNormal;
 #endif
@@ -583,6 +662,10 @@ void main() {
 	#include <envmap_vertex>
 	#include <shadowmap_vertex>
 	#include <fog_vertex>
+	texCoordProj = textureMatrixProj * modelMatrix * vec4(position, 1.0);
+	vNormalProj = normalMatrix * normal;
+	vNormalProj = normalize(vNormalProj);
+	vViewPositionProj = -(modelMatrix * vec4(position, 1.0)).xyz;
 }
 `;
 
