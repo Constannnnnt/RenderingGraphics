@@ -4,7 +4,7 @@ import { debug } from 'util';
 
 var container, stats
 var camera, scene, renderer
-var controls, ambientLight, directionalLight, spotLight
+var controls, ambientLight, directionalLight, spotLight, pointLight
 
 // shadowMap variable
 var SHADOW_MAP_WIDTH = 1024
@@ -45,29 +45,40 @@ function init() {
   controls.enablePan = true
 
   // mirror reflector
-  var verticalMirror = new THREE.Reflector(400, 350, {
-    clipBias: 0.002,
-    textureWidth: SCREEN_WIDTH * window.devicePixelRatio,
-    textureHeight: SCREEN_HEIGHT * window.devicePixelRatio,
-    color: 0x889999,
-    recursion: 1
-  })
-  verticalMirror.position.y = 50
-  verticalMirror.position.x = -20
-  verticalMirror.position.z = -128
-  scene.add(verticalMirror)
+  // var verticalMirror = new THREE.Reflector(400, 350, {
+  //   clipBias: 0.002,
+  //   textureWidth: SCREEN_WIDTH * window.devicePixelRatio,
+  //   textureHeight: SCREEN_HEIGHT * window.devicePixelRatio,
+  //   color: 0x889999,
+  //   recursion: 1
+  // })
+  // verticalMirror.position.y = 50
+  // verticalMirror.position.x = -20
+  // verticalMirror.position.z = -128
+  // scene.add(verticalMirror)
 
   // lights
   ambientLight = new THREE.AmbientLight(0xcccccc, 0.4)
   scene.add(ambientLight)
 
-  directionalLight = new THREE.DirectionalLight(0xffffff, 0.4)
+  // directional light
+  directionalLight = new THREE.DirectionalLight(0x0000cc, 0.4)
+  directionalLight.position.copy(new THREE.Vector3(0, 300, 300))
   var target = new THREE.Object3D()
   target.position.copy(new THREE.Vector3(0, 0, -5))
 
   scene.add(directionalLight)
   scene.add(target)
   directionalLight.target = target
+
+  // point light
+  pointLight = new THREE.PointLight(0xff0000, 0.4, 500)
+  pointLight.position.set(-25, 0, -10)
+  pointLight.castShadow = true
+  scene.add(pointLight)
+  // var sphereSize = 1;
+  // var pointLightHelper = new THREE.PointLightHelper( pointLight, sphereSize );
+  // scene.add( pointLightHelper );
 
   // spotlight
   spotLight = new THREE.SpotLight(0xffff00, 1)
@@ -78,8 +89,6 @@ function init() {
   spotLight.distance = 400
   spotLight.shadow.bias = 0.0001
   spotLight.castShadow = true
-  spotLight.shadowDarkness = 1
-  spotLight.shadowCameraVisible = true
   spotLight.shadow.mapSize.width = SHADOW_MAP_WIDTH
   spotLight.shadow.mapSize.height = SHADOW_MAP_HEIGHT
   spotLight.shadow.camera.near = 10
@@ -87,31 +96,31 @@ function init() {
   scene.add(spotLight)
 
   // floor texture
-  let textureLoader = new THREE.TextureLoader()
-  textureLoader.load(
-    '../images/floor.jpg',
-    function (texture) {
-      var material = new THREE.MeshBasicMaterial({
-        map: texture,
-        blending: THREE.AdditiveBlending,
-        transparent: true,
-        opacity: 0.5
-      })
-      var geometry = new THREE.BoxGeometry(387, 0.0001, 266)
-      //  var material = new THREE.MeshBasicMaterial( {color: 0x00ff00} )
-      let cube = new THREE.Mesh(geometry, material)
-      cube.position.copy(new THREE.Vector3(-27, -94, 5))
-      cube.castShadow = false
-      cube.receiveShadow = true
-      scene.add(cube)
-    },
-    function (xhr) {
-      // console.log((xhr.loaded / xhr.total * 100) + '% loaded')
-    },
-    function (xhr) {
-      console.error('An error happened')
-    }
-  )
+  // let textureLoader = new THREE.TextureLoader()
+  // textureLoader.load(
+  //   '../images/floor.jpg',
+  //   function (texture) {
+  //     var material = new THREE.MeshBasicMaterial({
+  //       map: texture,
+  //       blending: THREE.AdditiveBlending,
+  //       transparent: true,
+  //       opacity: 0.5
+  //     })
+  //     var geometry = new THREE.BoxGeometry(387, 0.0001, 266)
+  //     //  var material = new THREE.MeshBasicMaterial( {color: 0x00ff00} )
+  //     let cube = new THREE.Mesh(geometry, material)
+  //     cube.position.copy(new THREE.Vector3(-27, -94, 5))
+  //     cube.castShadow = false
+  //     cube.receiveShadow = true
+  //     scene.add(cube)
+  //   },
+  //   function (xhr) {
+  //     // console.log((xhr.loaded / xhr.total * 100) + '% loaded')
+  //   },
+  //   function (xhr) {
+  //     console.error('An error happened')
+  //   }
+  // )
 
   // Miku model
   THREE.Loader.Handlers.add(/\.dds$/i, new THREE.DDSLoader())
@@ -128,6 +137,7 @@ function init() {
       object.traverse(function (node) {
         if (node instanceof THREE.Mesh) {
           node.castShadow = true;
+          // node.receiveShadow = true;
         }
       });
       scene.add(object)
@@ -148,6 +158,7 @@ function init() {
         object.traverse(function (node) {
           if (node instanceof THREE.Mesh) {
             node.receiveShadow = true;
+            node.castShadow = true;
           }
         });
         scene.add(object)
@@ -258,19 +269,49 @@ function initGUI() {
   // })
   let gui = new dat.GUI({ width: '300px' })
   let folder = gui.addFolder("Directional light")
-  let API = {
+  let directionalLightConf = {
     visible: directionalLight.visible,
-    color: directionalLight.color.getStyle(),
-    castShadow: directionalLight.castShadow
+    color: directionalLight.color.getStyle()
   }
-  folder.add(API, 'visible').onChange(() => {
-    directionalLight.visible = API['visible']
+  folder.add(directionalLightConf, 'visible').onChange(() => {
+    directionalLight.visible = directionalLightConf['visible']
   })
-  folder.addColor(API, 'color').onChange((value) => {
+  folder.addColor(directionalLightConf, 'color').onChange((value) => {
     directionalLight.color.setStyle(value)
   })
-  folder.add(API, 'castShadow').onChange(() => {
-    directionalLight.castShadow = API['castShadow']
+  // folder.open()
+
+  folder = gui.addFolder("Point light")
+  let pointLightConf = {
+    visible: pointLight.visible,
+    color: pointLight.color.getStyle(),
+    castShadow: pointLight.castShadow
+  }
+  folder.add(pointLightConf, 'visible').onChange(() => {
+    pointLight.visible = pointLightConf['visible']
   })
-  folder.open()
+  folder.addColor(pointLightConf, 'color').onChange((value) => {
+    pointLight.color.setStyle(value)
+  })
+  folder.add(pointLightConf, 'castShadow').onChange(() => {
+    pointLight.castShadow = pointLightConf['castShadow']
+  })
+  // folder.open()
+
+  folder = gui.addFolder("Spot light")
+  let spotLightConf = {
+    visible: spotLight.visible,
+    color: spotLight.color.getStyle(),
+    castShadow: spotLight.castShadow
+  }
+  folder.add(spotLightConf, 'visible').onChange(() => {
+    spotLight.visible = spotLightConf['visible']
+  })
+  folder.addColor(spotLightConf, 'color').onChange((value) => {
+    spotLight.color.setStyle(value)
+  })
+  folder.add(spotLightConf, 'castShadow').onChange(() => {
+    spotLight.castShadow = spotLightConf['castShadow']
+  })
+  // folder.open()
 }

@@ -78,7 +78,7 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
 
 var container, stats;
 var camera, scene, renderer;
-var controls, ambientLight, directionalLight, spotLight;
+var controls, ambientLight, directionalLight, spotLight, pointLight;
 
 // shadowMap variable
 var SHADOW_MAP_WIDTH = 1024;
@@ -88,7 +88,7 @@ var SHADOW_MAP_HEIGHT = 1024;
 var SCREEN_WIDTH = window.innerWidth;
 var SCREEN_HEIGHT = window.innerHeight;
 var NEAR = 1;
-var FAR = 2000;
+var FAR = 10000;
 
 init();
 animate();
@@ -100,13 +100,8 @@ function init() {
   // canvas
   container = document.createElement('div');
   document.body.appendChild(container);
-<<<<<<< HEAD
-  camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 10000);
-  camera.position.z = 1000;
-=======
   camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, NEAR, FAR);
   camera.position.z = 250;
->>>>>>> 6d7c8ea673a9ce46cb18e783dd2bbb69b4b6f384
   scene.add(camera);
 
   renderer = new THREE.WebGLRenderer();
@@ -124,29 +119,40 @@ function init() {
   controls.enablePan = true;
 
   // mirror reflector
-  var verticalMirror = new THREE.Reflector(400, 350, {
-    clipBias: 0.002,
-    textureWidth: SCREEN_WIDTH * window.devicePixelRatio,
-    textureHeight: SCREEN_HEIGHT * window.devicePixelRatio,
-    color: 0x889999,
-    recursion: 1
-  });
-  verticalMirror.position.y = 50;
-  verticalMirror.position.x = -20;
-  verticalMirror.position.z = -128;
-  scene.add(verticalMirror);
+  // var verticalMirror = new THREE.Reflector(400, 350, {
+  //   clipBias: 0.002,
+  //   textureWidth: SCREEN_WIDTH * window.devicePixelRatio,
+  //   textureHeight: SCREEN_HEIGHT * window.devicePixelRatio,
+  //   color: 0x889999,
+  //   recursion: 1
+  // })
+  // verticalMirror.position.y = 50
+  // verticalMirror.position.x = -20
+  // verticalMirror.position.z = -128
+  // scene.add(verticalMirror)
 
   // lights
   ambientLight = new THREE.AmbientLight(0xcccccc, 0.4);
   scene.add(ambientLight);
 
-  directionalLight = new THREE.DirectionalLight(0xffffff, 0.4);
+  // directional light
+  directionalLight = new THREE.DirectionalLight(0x0000cc, 0.4);
+  directionalLight.position.copy(new THREE.Vector3(0, 300, 300));
   var target = new THREE.Object3D();
   target.position.copy(new THREE.Vector3(0, 0, -5));
 
   scene.add(directionalLight);
   scene.add(target);
   directionalLight.target = target;
+
+  // point light
+  pointLight = new THREE.PointLight(0xff0000, 0.4, 500);
+  pointLight.position.set(-25, 0, -10);
+  pointLight.castShadow = true;
+  scene.add(pointLight);
+  // var sphereSize = 1;
+  // var pointLightHelper = new THREE.PointLightHelper( pointLight, sphereSize );
+  // scene.add( pointLightHelper );
 
   // spotlight
   spotLight = new THREE.SpotLight(0xffff00, 1);
@@ -155,55 +161,40 @@ function init() {
   spotLight.penumbra = 0.08;
   spotLight.decay = 2;
   spotLight.distance = 400;
-<<<<<<< HEAD
-  // spotLight.castShadow = true
-  // spotLight.shadow.mapSize.width = 1024
-  // spotLight.shadow.mapSize.height = 1024
-  // spotLight.shadow.camera.near = 10
-  // spotLight.shadow.camera.far = 200
-=======
   spotLight.shadow.bias = 0.0001;
   spotLight.castShadow = true;
-  spotLight.shadowDarkness = 1;
-  spotLight.shadowCameraVisible = true;
   spotLight.shadow.mapSize.width = SHADOW_MAP_WIDTH;
   spotLight.shadow.mapSize.height = SHADOW_MAP_HEIGHT;
   spotLight.shadow.camera.near = 10;
   spotLight.shadow.camera.far = 180;
->>>>>>> 6d7c8ea673a9ce46cb18e783dd2bbb69b4b6f384
   scene.add(spotLight);
 
   // floor texture
-  let textureLoader = new THREE.TextureLoader();
-  textureLoader.load('../images/floor.jpg', function (texture) {
-    var material = new THREE.MeshBasicMaterial({
-      map: texture,
-      blending: THREE.AdditiveBlending,
-      transparent: true,
-      opacity: 0.5
-    });
-    var geometry = new THREE.BoxGeometry(387, 0.0001, 266);
-    //  var material = new THREE.MeshBasicMaterial( {color: 0x00ff00} )
-    let cube = new THREE.Mesh(geometry, material);
-    cube.position.copy(new THREE.Vector3(-27, -94, 5));
-    cube.castShadow = false;
-    cube.receiveShadow = true;
-    scene.add(cube);
-<<<<<<< HEAD
-  }, function (xhr) {
-    // console.log((xhr.loaded / xhr.total * 100) + '% loaded')
-  }, function (xhr) {
-=======
-  },
-  // Function called when download progresses
-  function (xhr) {
-    // console.log((xhr.loaded / xhr.total * 100) + '% loaded')
-  },
-  // Function called when download errors
-  function (xhr) {
->>>>>>> 6d7c8ea673a9ce46cb18e783dd2bbb69b4b6f384
-    console.error('An error happened');
-  });
+  // let textureLoader = new THREE.TextureLoader()
+  // textureLoader.load(
+  //   '../images/floor.jpg',
+  //   function (texture) {
+  //     var material = new THREE.MeshBasicMaterial({
+  //       map: texture,
+  //       blending: THREE.AdditiveBlending,
+  //       transparent: true,
+  //       opacity: 0.5
+  //     })
+  //     var geometry = new THREE.BoxGeometry(387, 0.0001, 266)
+  //     //  var material = new THREE.MeshBasicMaterial( {color: 0x00ff00} )
+  //     let cube = new THREE.Mesh(geometry, material)
+  //     cube.position.copy(new THREE.Vector3(-27, -94, 5))
+  //     cube.castShadow = false
+  //     cube.receiveShadow = true
+  //     scene.add(cube)
+  //   },
+  //   function (xhr) {
+  //     // console.log((xhr.loaded / xhr.total * 100) + '% loaded')
+  //   },
+  //   function (xhr) {
+  //     console.error('An error happened')
+  //   }
+  // )
 
   // Miku model
   THREE.Loader.Handlers.add(/\.dds$/i, new THREE.DDSLoader());
@@ -220,6 +211,7 @@ function init() {
       object.traverse(function (node) {
         if (node instanceof THREE.Mesh) {
           node.castShadow = true;
+          // node.receiveShadow = true;
         }
       });
       scene.add(object);
@@ -237,8 +229,13 @@ function init() {
         object.scale.x = 20;
         object.scale.y = 20;
         object.scale.z = 20;
+        object.traverse(function (node) {
+          if (node instanceof THREE.Mesh) {
+            node.receiveShadow = true;
+            node.castShadow = true;
+          }
+        });
         scene.add(object);
-        // console.log('stage loading')
 
         initGUI();
       }, xhr => {
@@ -253,7 +250,6 @@ function init() {
     });
   });
 
-<<<<<<< HEAD
   // projective texturing
   // window.projLight = new THREE.SpotLight(0xffff00, 3.0, 0.0, false)
   // projLight.position.set(300, 800, 500)
@@ -293,27 +289,6 @@ function init() {
   //     console.error('An error happened')
   //   }
   // )
-=======
-  var objLoader = new THREE.OBJLoader();
-  objLoader.setPath('../models/stage/');
-  objLoader.load('stage.obj', function (object) {
-    object.position.y -= 123.8;
-    object.scale.x = 20;
-    object.scale.y = 20;
-    object.scale.z = 20;
-    object.traverse(function (node) {
-      if (node instanceof THREE.Mesh) {
-        node.receiveShadow = true;
-      }
-    });
-    scene.add(object);
-    // console.log('stage loading')
-  }, xhr => {
-    // console.log(xhr)
-  }, xhr => {
-    console.log(xhr);
-  });
->>>>>>> 6d7c8ea673a9ce46cb18e783dd2bbb69b4b6f384
 
   window.addEventListener('resize', onWindowResize, false);
 }
@@ -365,21 +340,51 @@ function initGUI() {
   // })
   let gui = new dat.GUI({ width: '300px' });
   let folder = gui.addFolder("Directional light");
-  let API = {
+  let directionalLightConf = {
     visible: directionalLight.visible,
-    color: directionalLight.color.getStyle(),
-    castShadow: directionalLight.castShadow
+    color: directionalLight.color.getStyle()
   };
-  folder.add(API, 'visible').onChange(() => {
-    directionalLight.visible = API['visible'];
+  folder.add(directionalLightConf, 'visible').onChange(() => {
+    directionalLight.visible = directionalLightConf['visible'];
   });
-  folder.addColor(API, 'color').onChange(value => {
+  folder.addColor(directionalLightConf, 'color').onChange(value => {
     directionalLight.color.setStyle(value);
   });
-  folder.add(API, 'castShadow').onChange(() => {
-    directionalLight.castShadow = API['castShadow'];
+  // folder.open()
+
+  folder = gui.addFolder("Point light");
+  let pointLightConf = {
+    visible: pointLight.visible,
+    color: pointLight.color.getStyle(),
+    castShadow: pointLight.castShadow
+  };
+  folder.add(pointLightConf, 'visible').onChange(() => {
+    pointLight.visible = pointLightConf['visible'];
   });
-  folder.open();
+  folder.addColor(pointLightConf, 'color').onChange(value => {
+    pointLight.color.setStyle(value);
+  });
+  folder.add(pointLightConf, 'castShadow').onChange(() => {
+    pointLight.castShadow = pointLightConf['castShadow'];
+  });
+  // folder.open()
+
+  folder = gui.addFolder("Spot light");
+  let spotLightConf = {
+    visible: spotLight.visible,
+    color: spotLight.color.getStyle(),
+    castShadow: spotLight.castShadow
+  };
+  folder.add(spotLightConf, 'visible').onChange(() => {
+    spotLight.visible = spotLightConf['visible'];
+  });
+  folder.addColor(spotLightConf, 'color').onChange(value => {
+    spotLight.color.setStyle(value);
+  });
+  folder.add(spotLightConf, 'castShadow').onChange(() => {
+    spotLight.castShadow = spotLightConf['castShadow'];
+  });
+  // folder.open()
 }
 
 /***/ }),
