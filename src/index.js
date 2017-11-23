@@ -2,6 +2,7 @@
 import phong from './shaders/phong.js'
 
 import depthShader from './shaders/depth.js'
+import MTLMatcapShaderMaterial from './shaders/Matcap.js'
 import { ParticleEngine } from './ParticleEngine/ParticleEngine.js'
 import { Examples } from './ParticleEngine/ParticleEngineExamples.js'
 import { debug, inspect } from 'util';
@@ -328,6 +329,7 @@ function init() {
   plane.material.uniforms.textureMatrixProj.value = makeProjectiveMatrixForLight(spotLight2)
 
   initDepth()
+  initMatcap()
 
   window.addEventListener('resize', onWindowResize, false)
   window.addEventListener('mouseup', pick, false)
@@ -825,4 +827,15 @@ function pick (event) {
     }
     pickingTexture.dispose()
   }
+}
+
+function initMatcap() {
+  let material = new MTLMatcapShaderMaterial({
+    'name': 'matcap material',
+    'MatcapTexturePath': '../images/matcap-6.jpg'
+  })
+  var geometry = new THREE.TorusKnotBufferGeometry( 10, 3, 100, 16 )
+  var torus = new THREE.Mesh( geometry, material );
+  torus.position.set(100, 0, 0)
+  scene.add(torus)
 }

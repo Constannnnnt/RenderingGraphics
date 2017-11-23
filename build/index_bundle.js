@@ -532,11 +532,13 @@ ParticleEngine.prototype.destroy = function () {}
 Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__shaders_phong_js__ = __webpack_require__(2);
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__shaders_depth_js__ = __webpack_require__(3);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__ParticleEngine_ParticleEngine_js__ = __webpack_require__(0);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_3__ParticleEngine_ParticleEngineExamples_js__ = __webpack_require__(4);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_4_util__ = __webpack_require__(5);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_4_util___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_4_util__);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__shaders_Matcap_js__ = __webpack_require__(4);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_3__ParticleEngine_ParticleEngine_js__ = __webpack_require__(0);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_4__ParticleEngine_ParticleEngineExamples_js__ = __webpack_require__(6);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_5_util__ = __webpack_require__(7);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_5_util___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_5_util__);
 // import * as THREE from 'three'
+
 
 
 
@@ -867,6 +869,7 @@ function init() {
   plane.material.uniforms.textureMatrixProj.value = makeProjectiveMatrixForLight(spotLight2);
 
   initDepth();
+  initMatcap();
 
   window.addEventListener('resize', onWindowResize, false);
   window.addEventListener('mouseup', pick, false);
@@ -1184,7 +1187,7 @@ function initGUI() {
 }
 
 function particleSystem(effectName) {
-  let example = new __WEBPACK_IMPORTED_MODULE_3__ParticleEngine_ParticleEngineExamples_js__["a" /* Examples */]();
+  let example = new __WEBPACK_IMPORTED_MODULE_4__ParticleEngine_ParticleEngineExamples_js__["a" /* Examples */]();
   let paras = example.getEffect(effectName);
 
   if (!paras) {
@@ -1196,7 +1199,7 @@ function particleSystem(effectName) {
   loader.load('../images/smokeparticle.png', _texture => {
     paras.particleTexture = _texture;
     let group = new THREE.Group();
-    particleEngine = new __WEBPACK_IMPORTED_MODULE_2__ParticleEngine_ParticleEngine_js__["a" /* ParticleEngine */]();
+    particleEngine = new __WEBPACK_IMPORTED_MODULE_3__ParticleEngine_ParticleEngine_js__["a" /* ParticleEngine */]();
     particleEngine.setValues(paras);
     particleEngine.initialize();
 
@@ -1353,6 +1356,17 @@ function pick(event) {
     }
     pickingTexture.dispose();
   }
+}
+
+function initMatcap() {
+  let material = new __WEBPACK_IMPORTED_MODULE_2__shaders_Matcap_js__["a" /* default */]({
+    'name': 'matcap material',
+    'MatcapTexturePath': '../images/matcap-6.jpg'
+  });
+  var geometry = new THREE.TorusKnotBufferGeometry(10, 3, 100, 16);
+  var torus = new THREE.Mesh(geometry, material);
+  torus.position.set(100, 0, 0);
+  scene.add(torus);
 }
 
 /***/ }),
@@ -1570,6 +1584,171 @@ void main() {
 
 /***/ }),
 /* 4 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+var MatcapSelfShaderMaterialParameters = {
+  uniforms: {
+    // mtl parameters
+    bumpMapUsed: { type: 'f', value: 0.0 }, // mtl bump or map_bump exists
+    bumpMap: { type: 't', value: null }, // mtl map_bump
+    bumpScale: { type: 'f', value: 1.0 }, // mtl bump or map_bump scale
+    bumpMapPath: { value: null },
+    normalMapUsed: { type: 'f', value: 0.0 }, // the normal map
+    normalMap: { type: 't', value: null },
+    normalScale: { type: 'v2', value: [1.0, 1.0] },
+    normalMapPath: { value: null },
+    displacementMapUsed: { type: 'f', value: 0.0 },
+    displacementMap: { type: 't', value: null },
+    displacementScale: { type: 'f', value: 0.0 },
+    displacementBias: { type: 'f', value: 0.0 },
+    displacementMapPath: { value: null },
+
+    ka: { type: 'v3', value: [0.2, 0.2, 0.2] }, // mtl ka, ambient color
+    mapKaUsed: { type: 'f', value: 0.0 },
+    mapKa: { type: 't', value: null },
+    mapKaPath: { value: null },
+    mapKaWidth: { type: 'f', value: 1.0 },
+    mapKaHeight: { type: 'f', value: 1.0 },
+    kd: { type: 'v3', value: [0.1, 0.1, 1.0] }, // mtl kd, diffuse color
+    mapKdUsed: { type: 'f', value: 0.0 }, // mtl map_kd exists or not
+    mapKd: { type: 't', value: null }, // mtl map_kd, diffuse map
+    mapKdPath: { value: null },
+    mapKdWidth: { type: 'f', value: 1.0 },
+    mapKdHeight: { type: 'f', value: 1.0 },
+    ks: { type: 'v3', value: [1.0, 0.1, 0.1] }, // mtl ks, specular color
+    mapKsUsed: { type: 'f', value: 0.0 },
+    mapKs: { type: 't', value: null },
+    mapKsPath: { value: null },
+    mapKsWidth: { type: 'f', value: 1.0 },
+    mapKsHeight: { type: 'f', value: 1.0 },
+    ns: { type: 'f', value: 20.0 }, // mtl ns, specular shininess
+
+    d: { type: 'f', value: 1.0 }, // opacity, the alpha channel
+
+    // matcap parameters
+    MatcapTextureUsed: { type: 'f', value: 0.0 },
+    MatcapTexture: { type: 't', value: null },
+    MatcapTexturePath: { value: null },
+    fraction: { type: 'v3', value: [1.0, 1.0, 1.0] }
+  },
+  vertexShader: `
+varying vec2 vUv;
+varying vec3 vNormal;
+varying vec3 vViewPosition;
+uniform float displacementMapUsed;
+uniform sampler2D displacementMap;
+uniform float displacementScale;
+uniform float displacementBias;
+vec3 displacementMapOffset(vec3 normal, vec2 uv){
+  if(displacementMapUsed>0.5){
+    return normalize(normal) * (texture2D(displacementMap, uv).x * displacementScale + displacementBias);
+  }else{
+    return vec3(0.0);
+  }
+}
+void main()
+{
+  // passing texture to fragment shader
+  vUv = uv;
+  vNormal = normalize(normalMatrix * normal);
+  vViewPosition = -(modelViewMatrix * vec4(position, 1.0)).xyz;
+
+  vec3 transformedPosition = position + displacementMapOffset(normal, uv);
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(transformedPosition,1.0);
+}
+`,
+  fragmentShader: `
+#define USE_BUMPMAP
+#define USE_NORMALMAP
+varying vec2 vUv;
+varying vec3 vNormal;
+varying vec3 vViewPosition;
+
+uniform sampler2D MatcapTexture;
+uniform float MatcapTextureUsed;
+
+uniform float bumpMapUsed;
+uniform float normalMapUsed;
+
+uniform vec3 fraction;
+` + THREE.ShaderChunk['bumpmap_pars_fragment'] + THREE.ShaderChunk['normalmap_pars_fragment'] + `
+void main() {
+  vec3 modelPosition = -vViewPosition;
+  vec3 treatedNormal = normalize(vNormal);
+  if(bumpMapUsed>0.5)treatedNormal = perturbNormalArb(modelPosition, treatedNormal, dHdxy_fwd());
+  if(normalMapUsed>0.5)treatedNormal = perturbNormal2Arb( modelPosition, treatedNormal );
+  vec3 r = reflect(treatedNormal, normalize(modelPosition));
+  float m = 2.0 * sqrt(pow(r.x,2.0)+pow(r.y,2.0)+pow(r.z+1.5,2.0));
+  vec2 matcapuv = r.xy / m + 0.5;  
+
+  vec3 base = fraction;
+  if(MatcapTextureUsed > 0.5){
+    base *= texture2D(MatcapTexture, matcapuv).rgb;
+  }
+
+  gl_FragColor = vec4(base,1.0);
+}
+`
+};
+
+class MTLMatcapShaderMaterial extends THREE.ShaderMaterial {
+  constructor(options) {
+    super();
+    this.uniforms = JSON.parse(JSON.stringify(MatcapSelfShaderMaterialParameters.uniforms));
+    this.vertexShader = MatcapSelfShaderMaterialParameters.vertexShader;
+    this.fragmentShader = MatcapSelfShaderMaterialParameters.fragmentShader;
+    this.transparent = true;
+    this.extensions.derivatives = true;
+
+    this.name = options.name;
+    let bumpPath = options.bump;
+    if (bumpPath !== undefined && bumpPath !== null) {
+      this._loadTexture(bumpPath, this.uniforms.bumpMap, this.uniforms.bumpMapUsed, this.uniforms.bumpMapPath);
+    }
+    let MatcapTexturePath = options.MatcapTexturePath;
+    if (MatcapTexturePath !== undefined && MatcapTexturePath !== null) {
+      this._loadTexture(MatcapTexturePath, this.uniforms.MatcapTexture, this.uniforms.MatcapTextureUsed, this.uniforms.MatcapTexturePath);
+    }
+    if (options.fraction) {
+      this.uniforms.fraction.value = options.fraction;
+    }
+  }
+
+  loadMatcapTexture(path) {
+    this._loadTexture(path, this.uniforms.MatcapTexture, this.uniforms.MatcapTextureUsed, this.uniforms.MatcapTexturePath);
+  }
+
+  _loadTexture(path, textureObject, textureUsedObject, texturePathObject) {
+    if (path === '') {
+      textureUsedObject.value = 0.0;
+      return;
+    }
+    var loader = new THREE.TextureLoader();
+    loader.setCrossOrigin('');
+    loader.withCredentials = true;
+    loader.load(path, _texture => {
+      textureObject.value = _texture;
+      texturePathObject.value = path;
+      textureUsedObject.value = 1.0;
+    }, xhr => {
+      // console.log(xhr.loaded / xhr.total * 100.0 + '% loaded ' + path)
+    }, xhr => {
+      console.warn('an error happened while loading ' + path);
+    });
+  }
+
+  setMatcapTextureFraction(value) {
+    this.uniforms.fraction.value = value;
+    this.description.fraction = value;
+  }
+}
+
+/* harmony default export */ __webpack_exports__["a"] = (MTLMatcapShaderMaterial);
+
+/***/ }),
+/* 5 */,
+/* 6 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -1983,7 +2162,7 @@ class Examples {
 
 
 /***/ }),
-/* 5 */
+/* 7 */
 /***/ (function(module, exports, __webpack_require__) {
 
 /* WEBPACK VAR INJECTION */(function(global, process) {// Copyright Joyent, Inc. and other Node contributors.
@@ -2511,7 +2690,7 @@ function isPrimitive(arg) {
 }
 exports.isPrimitive = isPrimitive;
 
-exports.isBuffer = __webpack_require__(8);
+exports.isBuffer = __webpack_require__(10);
 
 function objectToString(o) {
   return Object.prototype.toString.call(o);
@@ -2555,7 +2734,7 @@ exports.log = function() {
  *     prototype.
  * @param {function} superCtor Constructor function to inherit prototype from.
  */
-exports.inherits = __webpack_require__(9);
+exports.inherits = __webpack_require__(11);
 
 exports._extend = function(origin, add) {
   // Don't do anything if add isn't an object
@@ -2573,10 +2752,10 @@ function hasOwnProperty(obj, prop) {
   return Object.prototype.hasOwnProperty.call(obj, prop);
 }
 
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(6), __webpack_require__(7)))
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(8), __webpack_require__(9)))
 
 /***/ }),
-/* 6 */
+/* 8 */
 /***/ (function(module, exports) {
 
 var g;
@@ -2603,7 +2782,7 @@ module.exports = g;
 
 
 /***/ }),
-/* 7 */
+/* 9 */
 /***/ (function(module, exports) {
 
 // shim for using process in browser
@@ -2793,7 +2972,7 @@ process.umask = function() { return 0; };
 
 
 /***/ }),
-/* 8 */
+/* 10 */
 /***/ (function(module, exports) {
 
 module.exports = function isBuffer(arg) {
@@ -2804,7 +2983,7 @@ module.exports = function isBuffer(arg) {
 }
 
 /***/ }),
-/* 9 */
+/* 11 */
 /***/ (function(module, exports) {
 
 if (typeof Object.create === 'function') {
