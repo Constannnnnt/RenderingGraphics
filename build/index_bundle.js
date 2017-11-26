@@ -534,8 +534,8 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__shaders_depth_js__ = __webpack_require__(3);
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__shaders_Matcap_js__ = __webpack_require__(4);
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_3__ParticleEngine_ParticleEngine_js__ = __webpack_require__(0);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_4__ParticleEngine_ParticleEngineExamples_js__ = __webpack_require__(6);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_5_util__ = __webpack_require__(7);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_4__ParticleEngine_ParticleEngineExamples_js__ = __webpack_require__(5);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_5_util__ = __webpack_require__(6);
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_5_util___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_5_util__);
 // import * as THREE from 'three'
 
@@ -1098,17 +1098,17 @@ function initGUI() {
     });
   });
 
-  folder = gui.addFolder("Projective Texture");
-  let ProjectiveTextureConf = {
-    blendingParam: planeuniform["blendingParam"].value,
-    showMapTexture: planeuniform["showMapTexture"].value
-  };
-  folder.add(ProjectiveTextureConf, 'blendingParam').min(0.0).max(1.0).step(0.1).onChange(value => {
-    planeuniform["blendingParam"].value = value;
-  });
-  folder.add(ProjectiveTextureConf, 'showMapTexture').onChange(value => {
-    planeuniform["showMapTexture"].value = value;
-  });
+  // folder = gui.addFolder("Projective Texture")
+  // let ProjectiveTextureConf = {
+  //   blendingParam: planeuniform["blendingParam"].value,
+  //   showMapTexture: planeuniform["showMapTexture"].value
+  // }
+  // folder.add(ProjectiveTextureConf, 'blendingParam').min(0.0).max(1.0).step(0.1).onChange((value) => {
+  //   planeuniform["blendingParam"].value = value
+  // })
+  // folder.add(ProjectiveTextureConf, 'showMapTexture').onChange((value) => {
+  //   planeuniform["showMapTexture"].value = value
+  // })
 
   folder = gui.addFolder("Mirror");
   let MirrorConf = {
@@ -1747,8 +1747,7 @@ class MTLMatcapShaderMaterial extends THREE.ShaderMaterial {
 /* harmony default export */ __webpack_exports__["a"] = (MTLMatcapShaderMaterial);
 
 /***/ }),
-/* 5 */,
-/* 6 */
+/* 5 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -2162,7 +2161,7 @@ class Examples {
 
 
 /***/ }),
-/* 7 */
+/* 6 */
 /***/ (function(module, exports, __webpack_require__) {
 
 /* WEBPACK VAR INJECTION */(function(global, process) {// Copyright Joyent, Inc. and other Node contributors.
@@ -2690,7 +2689,7 @@ function isPrimitive(arg) {
 }
 exports.isPrimitive = isPrimitive;
 
-exports.isBuffer = __webpack_require__(10);
+exports.isBuffer = __webpack_require__(9);
 
 function objectToString(o) {
   return Object.prototype.toString.call(o);
@@ -2734,7 +2733,7 @@ exports.log = function() {
  *     prototype.
  * @param {function} superCtor Constructor function to inherit prototype from.
  */
-exports.inherits = __webpack_require__(11);
+exports.inherits = __webpack_require__(10);
 
 exports._extend = function(origin, add) {
   // Don't do anything if add isn't an object
@@ -2752,10 +2751,10 @@ function hasOwnProperty(obj, prop) {
   return Object.prototype.hasOwnProperty.call(obj, prop);
 }
 
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(8), __webpack_require__(9)))
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(7), __webpack_require__(8)))
 
 /***/ }),
-/* 8 */
+/* 7 */
 /***/ (function(module, exports) {
 
 var g;
@@ -2782,7 +2781,7 @@ module.exports = g;
 
 
 /***/ }),
-/* 9 */
+/* 8 */
 /***/ (function(module, exports) {
 
 // shim for using process in browser
@@ -2972,7 +2971,7 @@ process.umask = function() { return 0; };
 
 
 /***/ }),
-/* 10 */
+/* 9 */
 /***/ (function(module, exports) {
 
 module.exports = function isBuffer(arg) {
@@ -2983,7 +2982,7 @@ module.exports = function isBuffer(arg) {
 }
 
 /***/ }),
-/* 11 */
+/* 10 */
 /***/ (function(module, exports) {
 
 if (typeof Object.create === 'function') {

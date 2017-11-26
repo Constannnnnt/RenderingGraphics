@@ -563,17 +563,17 @@ function initGUI() {
     })
   })
 
-  folder = gui.addFolder("Projective Texture")
-  let ProjectiveTextureConf = {
-    blendingParam: planeuniform["blendingParam"].value,
-    showMapTexture: planeuniform["showMapTexture"].value
-  }
-  folder.add(ProjectiveTextureConf, 'blendingParam').min(0.0).max(1.0).step(0.1).onChange((value) => {
-    planeuniform["blendingParam"].value = value
-  })
-  folder.add(ProjectiveTextureConf, 'showMapTexture').onChange((value) => {
-    planeuniform["showMapTexture"].value = value
-  })
+  // folder = gui.addFolder("Projective Texture")
+  // let ProjectiveTextureConf = {
+  //   blendingParam: planeuniform["blendingParam"].value,
+  //   showMapTexture: planeuniform["showMapTexture"].value
+  // }
+  // folder.add(ProjectiveTextureConf, 'blendingParam').min(0.0).max(1.0).step(0.1).onChange((value) => {
+  //   planeuniform["blendingParam"].value = value
+  // })
+  // folder.add(ProjectiveTextureConf, 'showMapTexture').onChange((value) => {
+  //   planeuniform["showMapTexture"].value = value
+  // })
 
   folder = gui.addFolder("Mirror")
   let MirrorConf = {
