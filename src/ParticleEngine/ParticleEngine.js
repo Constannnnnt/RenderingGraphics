@@ -31,7 +31,7 @@ void main()
   vAngle = customAngle;
 
   vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
-  gl_PointSize = customSize * ( ( 1.0 / 200000.0 ) / length(cameraPosition.xyz - mvPosition.xyz) ); // scale particles as objects in 3D space
+  gl_PointSize = customSize * ( ( 2000.0 ) / (length(cameraPosition.xyz - mvPosition.xyz) + 1000.0) ); // scale particles as objects in 3D space
   gl_Position = projectionMatrix * mvPosition;
 }
 `

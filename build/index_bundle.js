@@ -104,7 +104,7 @@ void main()
   vAngle = customAngle;
 
   vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
-  gl_PointSize = customSize * ( ( 1.0 / 200000.0 ) / length(cameraPosition.xyz - mvPosition.xyz) ); // scale particles as objects in 3D space
+  gl_PointSize = customSize * ( ( 2000.0 ) / (length(cameraPosition.xyz - mvPosition.xyz) + 1000.0) ); // scale particles as objects in 3D space
   gl_Position = projectionMatrix * mvPosition;
 }
 `;
@@ -534,8 +534,8 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__shaders_depth_js__ = __webpack_require__(3);
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__shaders_Matcap_js__ = __webpack_require__(4);
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_3__ParticleEngine_ParticleEngine_js__ = __webpack_require__(0);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_4__ParticleEngine_ParticleEngineExamples_js__ = __webpack_require__(6);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_5_util__ = __webpack_require__(7);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_4__ParticleEngine_ParticleEngineExamples_js__ = __webpack_require__(5);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_5_util__ = __webpack_require__(6);
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_5_util___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_5_util__);
 // import * as THREE from 'three'
 
@@ -1098,18 +1098,6 @@ function initGUI() {
     });
   });
 
-  folder = gui.addFolder("Projective Texture");
-  let ProjectiveTextureConf = {
-    blendingParam: planeuniform["blendingParam"].value,
-    showMapTexture: planeuniform["showMapTexture"].value
-  };
-  folder.add(ProjectiveTextureConf, 'blendingParam').min(0.0).max(1.0).step(0.1).onChange(value => {
-    planeuniform["blendingParam"].value = value;
-  });
-  folder.add(ProjectiveTextureConf, 'showMapTexture').onChange(value => {
-    planeuniform["showMapTexture"].value = value;
-  });
-
   folder = gui.addFolder("Mirror");
   let MirrorConf = {
     mirror: verticalMirror.visible
@@ -1198,6 +1186,14 @@ function particleSystem(effectName) {
   let loader = new THREE.TextureLoader();
   loader.load('../images/smokeparticle.png', _texture => {
     paras.particleTexture = _texture;
+    paras.positionBase = new THREE.Vector3(-50, 140, 0);
+    paras.positionSpread = new THREE.Vector3(300, 0, 200);
+    paras.sizeBase = 100;
+    paras.sizeSpread = 60;
+    paras.colorBase = new THREE.Vector3(173 / 360, 0.67, 0.6);
+    paras.particlesPerSecond = 60;
+    paras.particleDeathAge = 10;
+    paras.emitterDeathAge = 900;
     let group = new THREE.Group();
     particleEngine = new __WEBPACK_IMPORTED_MODULE_3__ParticleEngine_ParticleEngine_js__["a" /* ParticleEngine */]();
     particleEngine.setValues(paras);
@@ -1747,8 +1743,7 @@ class MTLMatcapShaderMaterial extends THREE.ShaderMaterial {
 /* harmony default export */ __webpack_exports__["a"] = (MTLMatcapShaderMaterial);
 
 /***/ }),
-/* 5 */,
-/* 6 */
+/* 5 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -2015,17 +2010,17 @@ var examples = {
   clouds: {
     positionStyle: __WEBPACK_IMPORTED_MODULE_0__ParticleEngine_js__["c" /* Type */].CUBE,
     positionBase: new THREE.Vector3(0, 0, 0),
-    positionSpread: new THREE.Vector3(200, 200, 10),
+    positionSpread: new THREE.Vector3(20, 20, 10),
 
     velocityStyle: __WEBPACK_IMPORTED_MODULE_0__ParticleEngine_js__["c" /* Type */].CUBE,
-    velocityBase: new THREE.Vector3(0.4, 0, 0),
-    velocitySpread: new THREE.Vector3(0.2, 0, 0),
+    velocityBase: new THREE.Vector3(8, 0, 0),
+    velocitySpread: new THREE.Vector3(4, 0, 0),
 
     particleTexture: null,
     particleTexturePath: '../../images/smokeparticle.png',
 
-    sizeBase: 40.0,
-    sizeSpread: 40.0,
+    sizeBase: 10.0,
+    sizeSpread: 5.0,
     colorBase: new THREE.Vector3(0.0, 0.0, 1.0), // H,S,L
     opacityTween: new __WEBPACK_IMPORTED_MODULE_0__ParticleEngine_js__["b" /* Tween */]([0, 1, 4, 5], [0, 1, 1, 0]),
 
@@ -2162,7 +2157,7 @@ class Examples {
 
 
 /***/ }),
-/* 7 */
+/* 6 */
 /***/ (function(module, exports, __webpack_require__) {
 
 /* WEBPACK VAR INJECTION */(function(global, process) {// Copyright Joyent, Inc. and other Node contributors.
@@ -2690,7 +2685,7 @@ function isPrimitive(arg) {
 }
 exports.isPrimitive = isPrimitive;
 
-exports.isBuffer = __webpack_require__(10);
+exports.isBuffer = __webpack_require__(9);
 
 function objectToString(o) {
   return Object.prototype.toString.call(o);
@@ -2734,7 +2729,7 @@ exports.log = function() {
  *     prototype.
  * @param {function} superCtor Constructor function to inherit prototype from.
  */
-exports.inherits = __webpack_require__(11);
+exports.inherits = __webpack_require__(10);
 
 exports._extend = function(origin, add) {
   // Don't do anything if add isn't an object
@@ -2752,10 +2747,10 @@ function hasOwnProperty(obj, prop) {
   return Object.prototype.hasOwnProperty.call(obj, prop);
 }
 
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(8), __webpack_require__(9)))
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(7), __webpack_require__(8)))
 
 /***/ }),
-/* 8 */
+/* 7 */
 /***/ (function(module, exports) {
 
 var g;
@@ -2782,7 +2777,7 @@ module.exports = g;
 
 
 /***/ }),
-/* 9 */
+/* 8 */
 /***/ (function(module, exports) {
 
 // shim for using process in browser
@@ -2972,7 +2967,7 @@ process.umask = function() { return 0; };
 
 
 /***/ }),
-/* 10 */
+/* 9 */
 /***/ (function(module, exports) {
 
 module.exports = function isBuffer(arg) {
@@ -2983,7 +2978,7 @@ module.exports = function isBuffer(arg) {
 }
 
 /***/ }),
-/* 11 */
+/* 10 */
 /***/ (function(module, exports) {
 
 if (typeof Object.create === 'function') {

@@ -563,18 +563,6 @@ function initGUI() {
     })
   })
 
-  folder = gui.addFolder("Projective Texture")
-  let ProjectiveTextureConf = {
-    blendingParam: planeuniform["blendingParam"].value,
-    showMapTexture: planeuniform["showMapTexture"].value
-  }
-  folder.add(ProjectiveTextureConf, 'blendingParam').min(0.0).max(1.0).step(0.1).onChange((value) => {
-    planeuniform["blendingParam"].value = value
-  })
-  folder.add(ProjectiveTextureConf, 'showMapTexture').onChange((value) => {
-    planeuniform["showMapTexture"].value = value
-  })
-
   folder = gui.addFolder("Mirror")
   let MirrorConf = {
     mirror: verticalMirror.visible
@@ -667,6 +655,14 @@ function particleSystem(effectName) {
   loader.load('../images/smokeparticle.png',
     (_texture) => {
       paras.particleTexture = _texture
+      paras.positionBase = new THREE.Vector3(-50, 140, 0)
+      paras.positionSpread = new THREE.Vector3(300, 0, 200)
+      paras.sizeBase = 100
+      paras.sizeSpread = 60
+      paras.colorBase = new THREE.Vector3(173/360, 0.67, 0.6)
+      paras.particlesPerSecond = 60
+      paras.particleDeathAge = 10
+      paras.emitterDeathAge = 900
       let group = new THREE.Group()
       particleEngine = new ParticleEngine()
       particleEngine.setValues(paras)

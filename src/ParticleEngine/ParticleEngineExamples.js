@@ -262,17 +262,17 @@ var examples =
     {
       positionStyle: Type.CUBE,
       positionBase: new THREE.Vector3(0, 0, 0),
-      positionSpread: new THREE.Vector3(200, 200, 10),
+      positionSpread: new THREE.Vector3(20, 20, 10),
 
       velocityStyle: Type.CUBE,
-      velocityBase: new THREE.Vector3(0.4, 0, 0),
-      velocitySpread: new THREE.Vector3(0.2, 0, 0),
+      velocityBase: new THREE.Vector3(8, 0, 0),
+      velocitySpread: new THREE.Vector3(4, 0, 0),
 
       particleTexture: null,
       particleTexturePath: '../../images/smokeparticle.png',
 
-      sizeBase: 40.0,
-      sizeSpread: 40.0,
+      sizeBase: 10.0,
+      sizeSpread: 5.0,
       colorBase: new THREE.Vector3(0.0, 0.0, 1.0), // H,S,L
       opacityTween: new Tween([0, 1, 4, 5], [0, 1, 1, 0]),
 
