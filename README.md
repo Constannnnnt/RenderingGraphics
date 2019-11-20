@@ -2,6 +2,9 @@
 
 This repository contains rendering projects for COMP5411, Advanced Computer Graphics. In this project, we are going to implement the following features:
 
+### Demonstration Video
+<iframe width="560" height="315" src="https://www.youtube.com/embed/scmyL9RJ3H0" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+
 ### Features
 - shadowmap: with and without PCF, [PCSS](http://developer.download.nvidia.com/shaderlibrary/docs/shadow_PCSS.pdf) technology
 - mirror surfaces: reflection of the environment - [environment mapping](https://en.wikipedia.org/wiki/Reflection_mapping)
