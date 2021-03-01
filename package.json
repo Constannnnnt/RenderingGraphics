@@ -12,7 +12,7 @@
     "cors": "^2.8.4",
     "express": "^4.16.2",
     "gulp": "^3.9.1",
-    "three": "^0.88.0",
+    "three": "^0.125.0",
     "webpack": "^3.8.1"
   },
   "devDependencies": {},
