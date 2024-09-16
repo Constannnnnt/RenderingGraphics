@@ -3,7 +3,7 @@
 This repository contains rendering projects for COMP5411, Advanced Computer Graphics. In this project, we are going to implement the following features:
 
 ### Demonstration Video
-[![IMAGE ALT TEXT HERE]([https://i9.ytimg.com/vi/scmyL9RJ3H0/mq1.jpg?sqp=CMiv1e4F&rs=AOn4CLDQIc8kezX0wDnAFBqz8dhEM-S8-A](https://img.youtube.com/vi/scmyL9RJ3H0/0.jpg))](https://www.youtube.com/watch?v=scmyL9RJ3H0)
+[![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/scmyL9RJ3H0/0.jpg)](https://www.youtube.com/watch?v=scmyL9RJ3H0)
 
 ### Features
 - shadowmap: with and without PCF, [PCSS](http://developer.download.nvidia.com/shaderlibrary/docs/shadow_PCSS.pdf) technology
